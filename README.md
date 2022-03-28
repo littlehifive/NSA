@@ -70,4 +70,4 @@ The following variables have been cleaned by me, **several checks are needed fro
 | mother_occ                                                          | labels set to original text values (for R analysis only)        |
 | 5-point survey questions (from capable_person to conclusion_abt_me) | 6 changed to missing (for R analysis only)                      |
 | 4-point survey (from bad_grades to pressure_parent_teacher)         | 5 changed to missing (for R analysis only)                      |
-| notes                                                               | What does "Mother expired" mean for row 18?                     |
+| notes                                                               | **RIDA: What does "Mother expired" mean for row 18?**           |
