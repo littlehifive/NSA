@@ -2,6 +2,39 @@
 
 ## Cleaning Log
 
+### **04.02.2022**:
+
+#### **Kathmandu baseline check:**
+
+See `Baseline/Comments Addressed_29032022.docx` for RIDA's response to my earlier questions. RIDA also provided the missing responses for the last 12 rows, which I manually added to the original KTM data sheet.
+
+Among the pre-test kids, SCH2_GR10_ST3 (the last row) has 37 siblings, which seems in probable. **RIDA please confirm if it should be 3 instead.**
+
+Apart from that, `siblings == 27` is changed to `2` as confirmed by RIDA.
+
+`student_type` is created with value of "Deaf" to match the variable name in Baglung data.
+
+#### **Pokhara baseline check:**
+
+`student_type` is created with value of "Deaf" to match the variable name in Baglung data.
+
+#### **Baglung baseline check:**
+
+No checks from RIDA needed.
+
+| Variable name                                                       | Operations                                                     |
+|---------------------------------------------------------------------|----------------------------------------------------------------|
+| student_type                                                        | labels set to original text values (for R analysis only)       |
+| grade                                                               | Should be numeric value 6-12 instead of texts (e.g. "Grade 6") |
+| std_id                                                              | name changed to st_id; "-" changed to "\_"                     |
+| gender                                                              | 1/2 labels changed to male/female (for R analysis only)        |
+| father_edu                                                          | labels set to original text values (for R analysis only)       |
+| mother_edu                                                          | labels set to original text values (for R analysis only)       |
+| father_occ                                                          | labels set to original text values (for R analysis only)       |
+| mother_occ                                                          | labels set to original text values (for R analysis only)       |
+| 5-point survey questions (from capable_person to conclusion_abt_me) | 6 changed to missing (for R analysis only)                     |
+| 4-point survey (from bad_grades to pressure_parent_teacher)         | 5 changed to missing (for R analysis only)                     |
+
 ### **03.28.2022**:
 
 #### **Kathmandu baseline check:**
