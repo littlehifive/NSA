@@ -55,7 +55,7 @@ dat_ktm <- dat_ktm %>%
                                 father_occ == 10 ~ "Do not want to mention",
                                 father_occ == 11 ~ "Do not know",
                                 )) %>% # labels set to original text values
-  mutate(father_occ = case_when(mother_occ == 1 ~ "Self-employment (agriculture)",
+  mutate(mother_occ = case_when(mother_occ == 1 ~ "Self-employment (agriculture)",
                                 mother_occ == 2 ~ "Self-employment (non-agriculture/business)",
                                 mother_occ == 3 ~ "Agricultural-based labor",
                                 mother_occ == 4 ~ "Other labor (Daily wages)",
@@ -72,8 +72,14 @@ dat_ktm <- dat_ktm %>%
                               TRUE ~ siblings)) %>% # mislabelled 27 and 37
   mutate_at(vars(capable_person:conclusion_abt_me), function(x){ifelse(x == 6, NA_integer_, x)}) %>% # change don't know to NA
   mutate_at(vars(bad_grades:pressure_parent_teacher), function(x){ifelse(x == 5, NA_integer_, x)}) %>% # change don't know to NA
-  mutate(student_type = "Deaf", .after = enumerator_name) # all students are deaf (to match variable name with Baglung data)
-  
+  mutate(student_type = "Deaf", .after = enumerator_name)  # all students are deaf (to match variable name with Baglung data)
+
+# sort data
+dat_ktm <- dat_ktm %>% 
+  mutate(temp_id = as.numeric(gsub("^SCH\\d+_GR\\d+_ST(\\d+)$", "\\1", st_id))) %>% 
+  arrange(grade, temp_id) %>%  # sort by grade and student ID
+  select(-temp_id)
+
 # write data
 write_csv(dat_ktm, file.path(path, "Baseline/cleaned/Baseline_Kathmandu.csv"))
 
@@ -123,7 +129,7 @@ dat_pokhara <- dat_pokhara %>%
                                 father_occ == 10 ~ "Do not want to mention",
                                 father_occ == 11 ~ "Do not know",
   )) %>% # labels set to original text values
-  mutate(father_occ = case_when(mother_occ == 1 ~ "Self-employment (agriculture)",
+  mutate(mother_occ = case_when(mother_occ == 1 ~ "Self-employment (agriculture)",
                                 mother_occ == 2 ~ "Self-employment (non-agriculture/business)",
                                 mother_occ == 3 ~ "Agricultural-based labor",
                                 mother_occ == 4 ~ "Other labor (Daily wages)",
@@ -138,6 +144,12 @@ dat_pokhara <- dat_pokhara %>%
   mutate_at(vars(capable_person:conclusion_abt_me), function(x){ifelse(x == 6, NA_integer_, x)}) %>% # change don't know to NA
   mutate_at(vars(bad_grades:pressure_parent_teacher), function(x){ifelse(x == 5, NA_integer_, x)}) %>% # change don't know to NA
   mutate(student_type = "Deaf", .after = enumerator_name) # all students are deaf (to match variable name with Baglung data)
+
+# sort data
+dat_pokhara <- dat_pokhara %>% 
+  mutate(temp_id = as.numeric(gsub("^SCH\\d+_GR\\d+_ST(\\d+)$", "\\1", st_id))) %>% 
+  arrange(grade, temp_id) %>%  # sort by grade and student ID
+  select(-temp_id)
 
 # write data
 write_csv(dat_pokhara, file.path(path, "Baseline/cleaned/Baseline_Pokhara.csv"))
@@ -184,7 +196,7 @@ dat_baglung <- dat_baglung %>%
                                 father_occ == 10 ~ "Do not want to mention",
                                 father_occ == 11 ~ "Do not know",
   )) %>% # labels set to original text values
-  mutate(father_occ = case_when(mother_occ == 1 ~ "Self-employment (agriculture)",
+  mutate(mother_occ = case_when(mother_occ == 1 ~ "Self-employment (agriculture)",
                                 mother_occ == 2 ~ "Self-employment (non-agriculture/business)",
                                 mother_occ == 3 ~ "Agricultural-based labor",
                                 mother_occ == 4 ~ "Other labor (Daily wages)",
@@ -198,6 +210,12 @@ dat_baglung <- dat_baglung %>%
   )) %>% 
   mutate_at(vars(capable_person:conclusion_abt_me), function(x){ifelse(x == 6, NA_integer_, x)}) %>% # change don't know to NA
   mutate_at(vars(bad_grades:pressure_parent_teacher), function(x){ifelse(x == 5, NA_integer_, x)}) # change don't know to NA
+
+# sort data
+dat_baglung <- dat_baglung %>% 
+  mutate(temp_id = as.numeric(gsub("^SCH\\d+_GR\\d+_ST(\\d+)$", "\\1", st_id))) %>% 
+  arrange(grade, temp_id) %>%  # sort by grade and student ID
+  select(-temp_id)
 
 # write data
 write_csv(dat_baglung, file.path(path, "Baseline/cleaned/Baseline_Baglung.csv"))
