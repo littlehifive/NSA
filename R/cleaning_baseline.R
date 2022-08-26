@@ -1,29 +1,37 @@
-# cleaning and checking
+# baseline cleaning and checking
 
-library(tidyverse)
+# library(tidyverse)
 
 # 1. Kathmandu baseline---------------------------------------------------------------
 
-path <- "/Volumes/GoogleDrive/My Drive/Nepal SA Study/Data"
+# path <- "/Volumes/GoogleDrive/My Drive/Nepal SA Study/Data"
 
-dat_ktm <- openxlsx::read.xlsx(file.path(path, "Baseline/original/Baseline_Survey_NSA_Kathmandu_27032022_v01.xlsx"))
+# dat_ktm_b_raw <- openxlsx::read.xlsx(file.path(path, "Baseline/original/Baseline_Survey_NSA_Kathmandu_27032022_v01.xlsx"))
 
 # unique(dat_ktm$siblings)
 # table(dat_ktm$siblings, useNA = "always")
 # sapply(dat_ktm[,18:44], table)
 
-dat_ktm <- dat_ktm %>% 
+clean_dat_ktm_b <- function(dat_ktm_b_raw){
+  
+dat_ktm <- dat_ktm_b_raw %>% 
   rename(worried_other_think = worried_.other_think, 
          conclusion_my_perform = conclusion_my_.perform,
          conclusion_abt_me = `_12_conclusion_me`,
          teacher_like_me = teacher_likeme,
          comfortable_who_i_am = comfortable_who_iam,
          not_understand_class = not_.understand_class) %>% 
+  mutate(query = ifelse(query == 1, "Yes", "No"),
+         understand_clearly = ifelse(understand_clearly == 1, "Yes", "No"),
+         consent = ifelse(consent == 1, "Yes", "No")
+         ) %>% # numeric 1/2 changed to Yes/No
   mutate(sch_id = ifelse(sch_id == 2, sch_id, 2)) %>% # there is one labeled 27 instead of 2
+  mutate(sch_id = as.factor(sch_id)) %>% # change sch_id from numeric to factor
   mutate(std_name = gsub("(.*)(\\s)$", "\\1", std_name),  # remove white space at the end
          std_name = gsub("([\\w])([\\w]+)", "\\U\\1\\L\\2", std_name, perl = TRUE)) %>% # title case names
   mutate(grade = as.factor(grade)) %>% # change grade from numeric to factor
-  rename(st_id = std_id) %>% # should be st_id to match what's in the id
+  rename(st_id = std_id,
+         st_name = std_name) %>% # should be st_id to match what's in the id
   mutate(st_id = gsub("-", "_", st_id)) %>% # change - to _ in st_id
   mutate(gender = ifelse(st_id == "SCH2_GR9_ST4", 2, gender), # this should be a girl that is not labelled
          gender = ifelse(gender == 2, "Female", "Male")) %>%  # change 1/2 to texts
@@ -80,26 +88,41 @@ dat_ktm <- dat_ktm %>%
   arrange(grade, temp_id) %>%  # sort by grade and student ID
   select(-temp_id)
 
-# write data
-write_csv(dat_ktm, file.path(path, "Baseline/cleaned/Baseline_Kathmandu.csv"))
+# add wave tag
+names(dat_ktm) <- paste0(names(dat_ktm), "_b")
 
+# write data
+# write_csv(dat_ktm, file.path(path, "Baseline/cleaned/Baseline_Kathmandu.csv"))
+
+return(dat_ktm)
+
+}
 
 # 2. Pokhara baseline--------------------------------------------------------------
 
-dat_pokhara <- openxlsx::read.xlsx(file.path(path, "Baseline/original/Baseline_Survey_NSA_Pokhara_27032022_v01.xlsx"))
+# dat_pokhara_b_raw <- openxlsx::read.xlsx(file.path(path, "Baseline/original/Baseline_Survey_NSA_Pokhara_27032022_v01.xlsx"))
 
 # unique(dat_pokhara$adult_members)
 # table(dat_pokhara$age, useNA = "always")
 # sapply(dat_pokhara[,18:44], table) 
 
-dat_pokhara <- dat_pokhara %>%
+clean_dat_pokhara_b <- function(dat_pokhara_b_raw){
+  
+dat_pokhara <- dat_pokhara_b_raw %>%
   rename(worried_other_think = worried_.other_think, 
          conclusion_my_perform = conclusion_my_.perform,
          conclusion_abt_me = `_12_conclusion_me`,
          teacher_like_me = teacher_likeme,
          comfortable_who_i_am = comfortable_who_iam,
          not_understand_class = not_.understand_class) %>% 
-  rename(st_id = std_id) %>% # should be st_id to match what's in the id
+  rename(st_id = std_id,
+         st_name = std_name) %>% # should be st_id to match what's in the id
+  mutate(query = ifelse(query == 1, "Yes", "No"),
+         understand_clearly = ifelse(understand_clearly == 1, "Yes", "No"),
+         consent = ifelse(consent == 1, "Yes", "No")
+  ) %>% 
+  mutate(sch_id = as.factor(sch_id)) %>% # change sch_id from numeric to factor
+  mutate(grade = as.factor(grade)) %>% # change grade from numeric to factor
   mutate(gender = ifelse(gender == 2, "Female", "Male")) %>% # change 1/2 to texts
   mutate(father_edu = case_when(father_edu == 1 ~ "Do not go to school",
                                 father_edu == 2 ~ "Basic education (Class 1 to 8)",
@@ -151,22 +174,38 @@ dat_pokhara <- dat_pokhara %>%
   arrange(grade, temp_id) %>%  # sort by grade and student ID
   select(-temp_id)
 
+# add wave tag
+names(dat_pokhara) <- paste0(names(dat_pokhara), "_b")
+
 # write data
-write_csv(dat_pokhara, file.path(path, "Baseline/cleaned/Baseline_Pokhara.csv"))
+# write_csv(dat_pokhara, file.path(path, "Baseline/cleaned/Baseline_Pokhara.csv"))
+
+return(dat_pokhara)
+}
 
 
 # 3. Baglung baseline ---------------------------------------------------------
 
-dat_baglung <- openxlsx::read.xlsx(file.path(path, "Baseline/original/Baseline_Survey_NSA_Baglung_31032022_v01.xlsx"))
+# dat_baglung_b_raw <- openxlsx::read.xlsx(file.path(path, "Baseline/original/Baseline_Survey_NSA_Baglung_31032022_v01.xlsx"))
 
 #unique(dat_baglung$father_edu)
 #table(dat_baglung$age, useNA = "always")
 #sapply(dat_baglung[,18:44], table) 
 
-dat_baglung <- dat_baglung %>%
+
+clean_dat_baglung_b <- function(dat_baglung_b_raw){
+  
+dat_baglung <- dat_baglung_b_raw %>%
   rename(notes = Note) %>% 
+  rename(st_name = std_name) %>% 
+  mutate(query = ifelse(query == 1, "Yes", "No"),
+         understand_clearly = ifelse(understand_clearly == 1, "Yes", "No"),
+         consent = ifelse(consent == 1, "Yes", "No")
+  ) %>% 
+  mutate(sch_id = as.factor(sch_id)) %>% # change sch_id from numeric to factor
   mutate(student_type = ifelse(student_type == 1, "Deaf", "Hearing")) %>% # changed to original texts
   mutate(grade = as.numeric(gsub("Grade ", "", grade))) %>% # should be numeric instead of string
+  mutate(grade = as.factor(grade)) %>% # change grade from numeric to factor
   mutate(gender = ifelse(gender == 2, "Female", "Male")) %>% # change 1/2 to texts
   mutate(father_edu = case_when(father_edu == 1 ~ "Do not go to school",
                                 father_edu == 2 ~ "Basic education (Class 1 to 8)",
@@ -217,5 +256,11 @@ dat_baglung <- dat_baglung %>%
   arrange(grade, temp_id) %>%  # sort by grade and student ID
   select(-temp_id)
 
+# add wave tag
+names(dat_baglung) <- paste0(names(dat_baglung), "_b")
+
 # write data
-write_csv(dat_baglung, file.path(path, "Baseline/cleaned/Baseline_Baglung.csv"))
+# write_csv(dat_baglung, file.path(path, "Baseline/cleaned/Baseline_Baglung.csv"))
+
+return(dat_baglung)
+}
