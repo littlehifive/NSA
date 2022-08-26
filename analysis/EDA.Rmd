@@ -1,0 +1,55 @@
+---
+title: "NSA Exploratory Analysis"
+author: "Michael Wu"
+date: "3/27/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r data preparation, include = F}
+library(tidyverse)
+path <- "/Volumes/GoogleDrive/My Drive/Nepal SA Study/Data"
+
+dat_ktm <- read_csv(file.path(path, "Baseline/cleaned/Baseline_Kathmandu.csv")) %>% as.data.frame()
+dat_pokhara <- read_csv(file.path(path, "Baseline/cleaned/Baseline_Pokhara.csv")) %>% as.data.frame()
+dat_baglung <- read_csv(file.path(path, "Baseline/cleaned/Baseline_Baglung.csv")) %>% as.data.frame()
+```
+
+# Kathmandu
+
+```{r}
+par(mfrow = c(6,6))
+
+dat_ktm_s <- dat_ktm[,unlist(lapply(dat_ktm, is.numeric))]
+
+for (i in 1:ncol(dat_ktm_s)) {
+  hist(dat_ktm_s[,i], xlab = "", main = names(dat_ktm_s)[i])
+}
+```
+
+# Pokhara
+
+```{r}
+par(mfrow = c(6,6))
+
+dat_pokhara_s <- dat_pokhara[,unlist(lapply(dat_pokhara, is.numeric))]
+
+for (i in 1:ncol(dat_pokhara_s)) {
+  hist(dat_pokhara_s[,i], xlab = "", main = names(dat_pokhara_s)[i])
+}
+```
+
+# Baglung
+
+```{r}
+par(mfrow = c(6,6))
+
+dat_baglung_s <- dat_baglung[,unlist(lapply(dat_baglung, is.numeric))]
+
+for (i in 1:ncol(dat_baglung_s)) {
+  hist(dat_baglung_s[,i], xlab = "", main = names(dat_baglung_s)[i])
+}
+```
