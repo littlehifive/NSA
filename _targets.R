@@ -85,18 +85,27 @@ list(
     )
   ),
   
+  # 1.4 load name checks
+  tar_target(
+    name_check,
+    readr::read_csv(
+      file.path(path, "Checks/name_mismatch_final.csv"),
+      show_col_types = FALSE
+      )
+    ),
+  
   # 2.1 clean data - baseline
   tar_target(
     dat_ktm_b_cleaned,
-    clean_dat_ktm_b(dat_ktm_b_raw)
+    clean_dat_ktm_b(dat_ktm_b_raw, name_check)
   ),
   tar_target(
     dat_pokhara_b_cleaned,
-    clean_dat_pokhara_b(dat_pokhara_b_raw)
+    clean_dat_pokhara_b(dat_pokhara_b_raw, name_check)
   ),
   tar_target(
     dat_baglung_b_cleaned,
-    clean_dat_baglung_b(dat_baglung_b_raw)
+    clean_dat_baglung_b(dat_baglung_b_raw, name_check)
   ),
   tar_target(
     dat_b_cleaned,
@@ -106,21 +115,21 @@ list(
   # 2.2 clean data - intervention
   tar_target(
     dat_int_cleaned,
-    clean_dat_int(dat_int_form_a_raw, dat_int_form_bc_raw)
+    clean_dat_int(dat_int_form_a_raw, dat_int_form_bc_raw, name_check)
   ),
   
   # 2.3 clean data - endline
   tar_target(
     dat_ktm_e_cleaned,
-    clean_dat_ktm_e(dat_ktm_e_raw)
+    clean_dat_ktm_e(dat_ktm_e_raw, name_check)
   ),
   tar_target(
     dat_pokhara_e_cleaned,
-    clean_dat_pokhara_e(dat_pokhara_e_raw)
+    clean_dat_pokhara_e(dat_pokhara_e_raw, name_check)
   ),
   tar_target(
     dat_baglung_e_cleaned,
-    clean_dat_baglung_e(dat_baglung_e_raw)
+    clean_dat_baglung_e(dat_baglung_e_raw, name_check)
   ),
   tar_target(
     dat_e_cleaned,
