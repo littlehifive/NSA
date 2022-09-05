@@ -136,7 +136,13 @@ list(
     dplyr::bind_rows(dat_ktm_e_cleaned, dat_pokhara_e_cleaned, dat_baglung_e_cleaned)
   ),
   
-  # 3.1 export cleaned data - baseline
+  # 3.1 merge data - all waves
+  tar_target(
+    dat_all_cleaned,
+    merge_dat(dat_b_cleaned, dat_e_cleaned, dat_int_cleaned)
+  ),
+  
+  # 4.1 export cleaned data - baseline
   tar_target(
     export_dat_ktm_b_cleaned,
     readr::write_csv(dat_ktm_b_cleaned, file.path(path, "Baseline/cleaned/Baseline_Kathmandu.csv"))
@@ -150,13 +156,13 @@ list(
     readr::write_csv(dat_baglung_b_cleaned, file.path(path, "Baseline/cleaned/Baseline_Baglung.csv"))
   ),
   
-  # 3.2 export cleaned data - intervention
+  # 4.2 export cleaned data - intervention
   tar_target(
-    export_dat_int_cleaned,
+    export_dat_int_cleaned_1,
     readr::write_csv(dat_int_cleaned, file.path(path, "Intervention/cleaned/Intervention_response.csv"))
   ),
   
-  # 3.3 export cleaned data - endline
+  # 4.3 export cleaned data - endline
   tar_target(
     export_dat_ktm_e_cleaned,
     readr::write_csv(dat_ktm_e_cleaned, file.path(path, "Endline/cleaned/Endline_Kathmandu.csv"))
@@ -168,6 +174,24 @@ list(
   tar_target(
     export_dat_baglung_e_cleaned,
     readr::write_csv(dat_baglung_e_cleaned, file.path(path, "Endline/cleaned/Endline_Baglung.csv"))
+  ),
+  
+  # 4.4 export cleaned data - by wave and across wave
+  tar_target(
+    export_dat_b_cleaned,
+    readr::write_csv(dat_b_cleaned, file.path(path, "Cleaned/Baseline_cleaned.csv"))
+  ),
+  tar_target(
+    export_dat_e_cleaned,
+    readr::write_csv(dat_e_cleaned, file.path(path, "Cleaned/Endline_cleaned.csv"))
+  ),
+  tar_target(
+    export_dat_int_cleaned_2,
+    readr::write_csv(dat_int_cleaned, file.path(path, "Cleaned/Intervention_cleaned.csv"))
+  ),
+  tar_target(
+    export_dat_all_cleaned,
+    readr::write_csv(dat_all_cleaned, file.path(path, "Cleaned/All_cleaned.csv"))
   )
   
 )
