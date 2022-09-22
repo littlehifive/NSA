@@ -9,7 +9,7 @@ library(targets)
 
 # Set target options:
 tar_option_set(
-  packages = c("tidyverse", "sjlabelled"), # packages that your targets need to run
+  packages = c("tidyverse", "sjlabelled", "lubridate"), # packages that your targets need to run
   format = "rds" # default storage format
   # Set other options as needed.
 )
@@ -64,6 +64,12 @@ list(
       file.path(path, "Intervention/original/intervention_codebook.xlsx"),
       sheet = 2)
   ),
+  tar_target(
+    dat_int_date_raw,
+    openxlsx::read.xlsx(
+      file.path(path, "Intervention/original/intervention_date.xlsx"),
+      sheet = 1)
+  ),
   
   # 1.3 load raw data - endline
   tar_target(
@@ -115,7 +121,11 @@ list(
   # 2.2 clean data - intervention
   tar_target(
     dat_int_cleaned,
-    clean_dat_int(dat_int_form_a_raw, dat_int_form_bc_raw, name_check)
+    clean_dat_int(dat_int_form_a_raw, dat_int_form_bc_raw, name_check) |> 
+      left_join(
+        clean_dat_int_date(dat_int_date_raw),
+        by = "st_id_int"
+        )
   ),
   
   # 2.3 clean data - endline
@@ -140,6 +150,12 @@ list(
   tar_target(
     dat_all_cleaned,
     merge_dat(dat_b_cleaned, dat_e_cleaned, dat_int_cleaned)
+  ),
+  
+  # 3.2 cleaned data with reverse code certain items - all waves
+  tar_target(
+    dat_all_cleaned_reverse_coded,
+    reverse_code_dat(dat_all_cleaned)
   ),
   
   # 4.1 export cleaned data - baseline
@@ -192,6 +208,9 @@ list(
   tar_target(
     export_dat_all_cleaned,
     readr::write_csv(dat_all_cleaned, file.path(path, "Cleaned/All_cleaned.csv"))
+  ),
+  tar_target(
+    export_dat_all_cleaned_reverse_coded,
+    readr::write_csv(dat_all_cleaned_reverse_coded, file.path(path, "Cleaned/All_cleaned_reverse_coded.csv"))
   )
-  
 )

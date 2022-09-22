@@ -76,7 +76,6 @@ merge_dat <- function(dat_b_cleaned, dat_e_cleaned, dat_int_cleaned){
   #             by = c("st_id_b" = "st_id_int"))
   # 
   # prod(na.omit(temp$sch_id_b == temp$sch_id_int))
-  
 
 # 3. merge datasets -------------------------------------------------------------------------
 
@@ -123,16 +122,73 @@ merge_dat <- function(dat_b_cleaned, dat_e_cleaned, dat_int_cleaned){
     arrange(sch_id, grade, temp_id) |>  # sort by grade and student ID
     select(-temp_id)
   
+  # combine intervention conditions
+  dat_all_cleaned <- dat_all_cleaned |> 
+    mutate(treated_int = ifelse(form_int == "A", 1, 0))
+  
   # reorder variables
   dat_all_cleaned <- dat_all_cleaned |> 
     select(sch_name:st_id, st_name, gender, age_b, age_e, student_type, 
            father_edu:siblings,
-           form_int:notes_int,
+           date_int, treated_int, form_int:notes_int,
            capable_person_b:notes_b,
            capable_person_e:notes_e,
            enumerator_name_b, query_b:consent_b, enumerator_name_e:consent_e
            )
   
+  # remove the students that did not give consent
+  dat_all_cleaned <- dat_all_cleaned |> 
+    filter(consent_b == "Yes" | is.na(consent_b) == T) |> 
+    filter(consent_e == "Yes" | is.na(consent_e) == T)
+  
   return(dat_all_cleaned)
 }
 
+# reverse code certain items so that larger values reflect better child development
+
+reverse_code_dat <- function(dat_all_cleaned){
+  
+  # reverse code
+  dat_all_cleaned_reverse_coded <- dat_all_cleaned |> 
+    mutate(
+      concerned_abt_impression_b = recode(concerned_abt_impression_b,
+                                          `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1),
+      concerned_abt_impression_e = recode(concerned_abt_impression_e,
+                                          `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1),
+      worried_other_think_b = recode(worried_other_think_b,
+                                     `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1),
+      worried_other_think_e = recode(worried_other_think_e,
+                                     `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1),
+      feel_outsider_b = recode(feel_outsider_b,
+                               `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1),
+      feel_outsider_e = recode(feel_outsider_e,
+                               `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1),
+      teacher_like_me_b = recode(teacher_like_me_b,
+                                 `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1),
+      teacher_like_me_e = recode(teacher_like_me_e,
+                                 `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1)
+    )
+  
+  # create composite average scores
+  dat_all_cleaned_reverse_coded <- dat_all_cleaned_reverse_coded |> 
+    mutate(
+      self_integrity_b = rowMeans(across(capable_person_b:comfortable_who_i_am_b), na.rm = T),
+      self_integrity_e = rowMeans(across(capable_person_e:comfortable_who_i_am_e), na.rm = T),
+      self_esteem_b = rowMeans(across(feel_smart_b:worried_other_think_b), na.rm = T),
+      self_esteem_e = rowMeans(across(feel_smart_e:worried_other_think_e), na.rm = T),
+      belonging_b = rowMeans(across(belong_school_b:ppl_like_me_b), na.rm = T),
+      belonging_e = rowMeans(across(belong_school_e:ppl_like_me_e), na.rm = T), 
+      stereotype_b = rowMeans(across(worry_abt_dumb_b:worry_ppl_dislike_b), na.rm = T),
+      stereotype_e = rowMeans(across(worry_abt_dumb_e:worry_ppl_dislike_e), na.rm = T),
+      threat_collective_b = conclusion_other_deaf_b,
+      threat_collective_e = conclusion_other_deaf_e,
+      threat_stereotype_b = conclusion_my_perform_b,
+      threat_stereotype_e = conclusion_my_perform_e,
+      threat_general_b = conclusion_abt_me_b,
+      threat_general_e = conclusion_abt_me_e,
+      academic_stress_b = rowMeans(across(bad_grades_b:pressure_parent_teacher_b), na.rm = T),
+      academic_stress_e = rowMeans(across(bad_grades_e:pressure_parent_teacher_e), na.rm = T)
+    )
+  
+  return(dat_all_cleaned_reverse_coded)
+}
