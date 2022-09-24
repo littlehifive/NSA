@@ -126,15 +126,20 @@ clean_dat_baglung_e <- function(dat_baglung_e_raw, name_check){
     mutate_at(vars(capable_person:conclusion_abt_me), function(x){ifelse(x == 6, NA_integer_, x)}) |> # change don't know to NA
     mutate_at(vars(bad_grades:pressure_parent_teacher), function(x){ifelse(x == 5, NA_integer_, x)}) # change don't know to NA
   
-  # average the quant responses of double entries by different enumerators
+  # average the quant responses of double entries by different enumerators (would cause ordinal values to be continous - i.e., conflict with modeling)
+  # temp <- dat_baglung |> filter(st_id %in% c("SCH1_GR7_ST12", "SCH1_GR7_ST13", "SCH1_GR9_ST7"))
+  # temp1 <- temp |> group_by(st_id) |> summarise_at(vars(capable_person:pressure_parent_teacher), mean, na.rm = T)
+  # temp2 <- temp |> group_by(st_id) |> summarise_at(vars(enumerator_name:age, notes), unique) |> slice(c(1,3,5))
+  # temp3 <- bind_cols(temp2 |> ungroup() |> select(-st_id), temp1)
+  
+  # randomly choose one from the double entries (fits with ordinal modeling strategy)
+  set.seed(1234)
   temp <- dat_baglung |> filter(st_id %in% c("SCH1_GR7_ST12", "SCH1_GR7_ST13", "SCH1_GR9_ST7"))
-  temp1 <- temp |> group_by(st_id) |> summarise_at(vars(capable_person:pressure_parent_teacher), mean, na.rm = T)
-  temp2 <- temp |> group_by(st_id) |> summarise_at(vars(enumerator_name:age, notes), unique) |> slice(c(1,3,5))
-  temp3 <- bind_cols(temp2 |> ungroup() |> select(-st_id), temp1)
+  temp <- temp |> group_by(st_id) |> slice_sample(n = 1)
   
   dat_baglung <- dat_baglung |> 
     filter(!st_id %in% c("SCH1_GR7_ST12", "SCH1_GR7_ST13", "SCH1_GR9_ST7")) |> 
-    bind_rows(temp3)
+    bind_rows(temp)
   
   # sort data
   dat_baglung <- dat_baglung |> 
