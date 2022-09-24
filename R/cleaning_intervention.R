@@ -154,7 +154,7 @@ clean_dat_int_date <- function(dat_int_date_raw){
 
   dat_int_date <- dat_int_date_raw |> 
     mutate(date_int = parse_date_time(date_int, orders = "dmy")) |> 
-    select(st_id_int, date_int, )
+    select(st_id_int, date_int)
   
   return(dat_int_date)
 }
