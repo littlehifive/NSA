@@ -43,6 +43,17 @@ dat_ktm <- dat_ktm_b_raw |>
                                 father_edu == 6 ~ "Do not know",
                                 father_edu == 7 ~ "Don't want to answer"
                                 )) |> # labels set to original text values
+  mutate(father_edu_f = ifelse(father_edu %in% c("Do not know", "Don't want to answer"),
+                               NA_character_,
+                               father_edu
+  )) |> 
+  mutate(father_edu_f = factor(father_edu_f, 
+                               levels = c("Do not go to school",
+                                          "Basic education (Class 1 to 8)",
+                                          "Secondary education (Class 9 to 12)",
+                                          "Some college education",
+                                          "Bachelor and above"
+                               ))) |> 
   mutate(mother_edu = case_when(mother_edu == 1 ~ "Do not go to school",
                                 mother_edu == 2 ~ "Basic education (Class 1 to 8)",
                                 mother_edu == 3 ~ "Secondary education (Class 9 to 12)",
@@ -51,6 +62,18 @@ dat_ktm <- dat_ktm_b_raw |>
                                 mother_edu == 6 ~ "Do not know",
                                 mother_edu == 7 ~ "Don't want to answer"
   )) |> # labels set to original text values
+  mutate(mother_edu_f = ifelse(mother_edu %in% c("Do not know", "Don't want to answer"),
+                               NA_character_,
+                               mother_edu
+  )) |> 
+  mutate(mother_edu_f = factor(mother_edu_f, 
+                               levels = c("Do not go to school",
+                                          "Basic education (Class 1 to 8)",
+                                          "Secondary education (Class 9 to 12)",
+                                          "Some college education",
+                                          "Bachelor and above",
+                                          TRUE ~ NA_character_
+                               ))) |> 
   mutate(father_occ = case_when(father_occ == 1 ~ "Self-employment (agriculture)",
                                 father_occ == 2 ~ "Self-employment (non-agriculture/business)",
                                 father_occ == 3 ~ "Agricultural-based labor",
@@ -63,6 +86,17 @@ dat_ktm <- dat_ktm_b_raw |>
                                 father_occ == 10 ~ "Do not want to mention",
                                 father_occ == 11 ~ "Do not know",
                                 )) |> # labels set to original text values
+  mutate(father_occ_f = case_when(
+    father_occ %in% c("Do not know", "Do not want to mention") ~ NA_character_,
+    father_occ == "Others (please mention)" ~ father_occ_other,
+    TRUE ~ father_occ
+  )) |> 
+  mutate(father_occ_salary = case_when(
+    father_occ %in% c("Other labor (Daily wages)", "Regular salary based job (government/job)",
+                      "Social service", "Foreign employment", "Social Services") ~ "Salary job",
+    father_occ %in% c("Self-employment (agriculture)", "Self-employment (non-agriculture/business)") ~ "Non-salary job",
+    TRUE ~ "No job"
+  )) |>
   mutate(mother_occ = case_when(mother_occ == 1 ~ "Self-employment (agriculture)",
                                 mother_occ == 2 ~ "Self-employment (non-agriculture/business)",
                                 mother_occ == 3 ~ "Agricultural-based labor",
@@ -75,6 +109,18 @@ dat_ktm <- dat_ktm_b_raw |>
                                 mother_occ == 10 ~ "Do not want to mention",
                                 mother_occ == 11 ~ "Do not know",
   )) |> # labels set to original text values
+  mutate(mother_occ_f = case_when(
+    mother_occ %in% c("Do not know", "Do not want to mention") ~ NA_character_,
+    mother_occ == "Others (please mention)" ~ mother_occ_other,
+    TRUE ~ mother_occ
+  )) |> 
+  mutate(mother_occ_salary = case_when(
+    mother_occ %in% c("Foreign employment", "Other labor (Daily wages)", 
+                      "Regular salary based job (government/job)", "Works as a maid") ~ "Salary job",
+    mother_occ %in% c("Agricultural-based labor", "Runs a shop",
+                      "Self-employment (agriculture)", "Self-employment (non-agriculture/business)") ~ "Non-salary job",
+    TRUE ~ "No job"
+  )) |>
   mutate(siblings = case_when(siblings == 27 ~ 2,
                               siblings == 37 ~ 3,
                               TRUE ~ siblings)) |> # mislabelled 27 and 37
@@ -93,7 +139,8 @@ dat_ktm <- dat_ktm |>
   left_join(name_check, by = c("st_id" = "st_id_correct")) |> 
   select(-st_name) |> 
   rename(st_name = st_name_correct) |> 
-  select(enumerator_name:st_id, st_name, gender:notes)
+  select(enumerator_name:st_id, st_name, gender:mother_occ_other, 
+         father_edu_f:mother_occ_salary, adult_members:notes)
 
 # add wave tag
 names(dat_ktm) <- paste0(names(dat_ktm), "_b")
@@ -139,6 +186,17 @@ dat_pokhara <- dat_pokhara_b_raw |>
                                 father_edu == 6 ~ "Do not know",
                                 father_edu == 7 ~ "Don't want to answer"
   )) |> # labels set to original text values
+  mutate(father_edu_f = ifelse(father_edu %in% c("Do not know", "Don't want to answer"),
+                               NA_character_,
+                               father_edu
+  )) |> 
+  mutate(father_edu_f = factor(father_edu_f, 
+                               levels = c("Do not go to school",
+                                          "Basic education (Class 1 to 8)",
+                                          "Secondary education (Class 9 to 12)",
+                                          "Some college education",
+                                          "Bachelor and above"
+                               ))) |> 
   mutate(mother_edu = case_when(mother_edu == 1 ~ "Do not go to school",
                                 mother_edu == 2 ~ "Basic education (Class 1 to 8)",
                                 mother_edu == 3 ~ "Secondary education (Class 9 to 12)",
@@ -147,6 +205,18 @@ dat_pokhara <- dat_pokhara_b_raw |>
                                 mother_edu == 6 ~ "Do not know",
                                 mother_edu == 7 ~ "Don't want to answer"
   )) |> # labels set to original text values
+  mutate(mother_edu_f = ifelse(mother_edu %in% c("Do not know", "Don't want to answer"),
+                               NA_character_,
+                               mother_edu
+  )) |> 
+  mutate(mother_edu_f = factor(mother_edu_f, 
+                               levels = c("Do not go to school",
+                                          "Basic education (Class 1 to 8)",
+                                          "Secondary education (Class 9 to 12)",
+                                          "Some college education",
+                                          "Bachelor and above",
+                                          TRUE ~ NA_character_
+                               ))) |> 
   mutate(father_occ = case_when(father_occ == 1 ~ "Self-employment (agriculture)",
                                 father_occ == 2 ~ "Self-employment (non-agriculture/business)",
                                 father_occ == 3 ~ "Agricultural-based labor",
@@ -159,6 +229,18 @@ dat_pokhara <- dat_pokhara_b_raw |>
                                 father_occ == 10 ~ "Do not want to mention",
                                 father_occ == 11 ~ "Do not know",
   )) |> # labels set to original text values
+  mutate(father_occ_f = case_when(
+    father_occ %in% c("Do not know", "Do not want to mention") ~ NA_character_,
+    father_occ == "Others (please mention)" ~ father_occ_other,
+    TRUE ~ father_occ
+  )) |> 
+  mutate(father_occ_salary = case_when(
+    father_occ %in% c("Foreign Employment", "Truck driver", "Regular salary based job (government/job)",
+                      "Other labor (Daily wages)", "Social work", "Army") ~ "Salary job",
+    father_occ %in% c("Self-employment (non-agriculture/business)", "Self-employment (agriculture)",
+                      "Agricultural-based labor", "Temple Priests") ~ "Non-salary job",
+    TRUE ~ "No job"
+  )) |>
   mutate(mother_occ = case_when(mother_occ == 1 ~ "Self-employment (agriculture)",
                                 mother_occ == 2 ~ "Self-employment (non-agriculture/business)",
                                 mother_occ == 3 ~ "Agricultural-based labor",
@@ -171,6 +253,17 @@ dat_pokhara <- dat_pokhara_b_raw |>
                                 mother_occ == 10 ~ "Do not want to mention",
                                 mother_occ == 11 ~ "Do not know",
   )) |> 
+  mutate(mother_occ_f = case_when(
+    mother_occ %in% c("Do not know", "Do not want to mention") ~ NA_character_,
+    mother_occ == "Others (please mention)" ~ mother_occ_other,
+    TRUE ~ mother_occ
+  )) |> 
+  mutate(mother_occ_salary = case_when(
+    mother_occ %in% c("Doctor", "Regular salary based job (government/job)", 
+                      "Other labor (Daily wages)", "Foreign Employment") ~ "Salary job",
+    mother_occ %in% c("Self-employment (agriculture)", "Self-employment (non-agriculture/business)") ~ "Non-salary job",
+    TRUE ~ "No job"
+  )) |>
   mutate_at(vars(capable_person:conclusion_abt_me), function(x){ifelse(x == 6, NA_integer_, x)}) |> # change don't know to NA
   mutate_at(vars(bad_grades:pressure_parent_teacher), function(x){ifelse(x == 5, NA_integer_, x)}) |> # change don't know to NA
   mutate(student_type = "Deaf", .after = enumerator_name) # all students are deaf (to match variable name with Baglung data)
@@ -186,7 +279,8 @@ dat_pokhara <- dat_pokhara |>
   left_join(name_check, by = c("st_id" = "st_id_correct")) |> 
   select(-st_name) |> 
   rename(st_name = st_name_correct) |> 
-  select(enumerator_name:st_id, st_name, gender:notes)
+  select(enumerator_name:st_id, st_name, gender:mother_occ_other, 
+         father_edu_f:mother_occ_salary, adult_members:notes)
 
 # add wave tag
 names(dat_pokhara) <- paste0(names(dat_pokhara), "_b")
@@ -230,6 +324,17 @@ dat_baglung <- dat_baglung_b_raw |>
                                 father_edu == 6 ~ "Do not know",
                                 father_edu == 7 ~ "Don't want to answer"
   )) |> # labels set to original text values
+  mutate(father_edu_f = ifelse(father_edu %in% c("Do not know", "Don't want to answer"),
+                               NA_character_,
+                               father_edu
+                               )) |> 
+  mutate(father_edu_f = factor(father_edu_f, 
+                               levels = c("Do not go to school",
+                                          "Basic education (Class 1 to 8)",
+                                          "Secondary education (Class 9 to 12)",
+                                          "Some college education",
+                                          "Bachelor and above"
+                                          ))) |> 
   mutate(mother_edu = case_when(mother_edu == 1 ~ "Do not go to school",
                                 mother_edu == 2 ~ "Basic education (Class 1 to 8)",
                                 mother_edu == 3 ~ "Secondary education (Class 9 to 12)",
@@ -238,6 +343,18 @@ dat_baglung <- dat_baglung_b_raw |>
                                 mother_edu == 6 ~ "Do not know",
                                 mother_edu == 7 ~ "Don't want to answer"
   )) |> # labels set to original text values
+  mutate(mother_edu_f = ifelse(mother_edu %in% c("Do not know", "Don't want to answer"),
+                               NA_character_,
+                               mother_edu
+  )) |> 
+  mutate(mother_edu_f = factor(mother_edu_f, 
+                               levels = c("Do not go to school",
+                                          "Basic education (Class 1 to 8)",
+                                          "Secondary education (Class 9 to 12)",
+                                          "Some college education",
+                                          "Bachelor and above",
+                                          TRUE ~ NA_character_
+                               ))) |> 
   mutate(father_occ = case_when(father_occ == 1 ~ "Self-employment (agriculture)",
                                 father_occ == 2 ~ "Self-employment (non-agriculture/business)",
                                 father_occ == 3 ~ "Agricultural-based labor",
@@ -250,6 +367,18 @@ dat_baglung <- dat_baglung_b_raw |>
                                 father_occ == 10 ~ "Do not want to mention",
                                 father_occ == 11 ~ "Do not know",
   )) |> # labels set to original text values
+  mutate(father_occ_f = case_when(
+    father_occ %in% c("Do not know", "Do not want to mention") ~ NA_character_,
+    father_occ == "Others (please mention)" ~ father_occ_other,
+    TRUE ~ father_occ
+  )) |> 
+  mutate(father_occ_salary = case_when(
+    father_occ %in% c("Foreign employment", "Indian Army", "Other labor (Daily wages)",
+                      "Regular salary based job (government/job)") ~ "Salary job",
+    father_occ %in% c("Agricultural-based labor", "Self-employment (agriculture)", 
+                      "Self-employment (non-agriculture/business)") ~ "Non-salary job",
+    TRUE ~ "No job"
+  )) |> 
   mutate(mother_occ = case_when(mother_occ == 1 ~ "Self-employment (agriculture)",
                                 mother_occ == 2 ~ "Self-employment (non-agriculture/business)",
                                 mother_occ == 3 ~ "Agricultural-based labor",
@@ -261,6 +390,18 @@ dat_baglung <- dat_baglung_b_raw |>
                                 mother_occ == 9 ~ "Others (please mention)",
                                 mother_occ == 10 ~ "Do not want to mention",
                                 mother_occ == 11 ~ "Do not know",
+  )) |> 
+  mutate(mother_occ_f = case_when(
+    mother_occ %in% c("Do not know", "Do not want to mention") ~ NA_character_,
+    mother_occ == "Others (please mention)" ~ mother_occ_other,
+    TRUE ~ mother_occ
+  )) |> 
+  mutate(mother_occ_salary = case_when(
+    mother_occ %in% c("Foreign employment", "Other labor (Daily wages)",
+                      "Regular salary based job (government/job)") ~ "Salary job",
+    mother_occ %in% c("Agricultural-based labor", "Health volunteer", "Self-employment (agriculture)", 
+                      "Self-employment (non-agriculture/business)") ~ "Non-salary job",
+    TRUE ~ "No job"
   )) |> 
   mutate_at(vars(capable_person:conclusion_abt_me), function(x){ifelse(x == 6, NA_integer_, x)}) |> # change don't know to NA
   mutate_at(vars(bad_grades:pressure_parent_teacher), function(x){ifelse(x == 5, NA_integer_, x)}) # change don't know to NA
@@ -276,7 +417,8 @@ dat_baglung <- dat_baglung |>
   left_join(name_check, by = c("st_id" = "st_id_correct")) |> 
   select(-st_name) |> 
   rename(st_name = st_name_correct) |> 
-  select(enumerator_name:st_id, st_name, gender:notes)
+  select(enumerator_name:st_id, st_name, gender:mother_occ_other, 
+         father_edu_f:mother_occ_salary, adult_members:notes)
 
 # add wave tag
 names(dat_baglung) <- paste0(names(dat_baglung), "_b")

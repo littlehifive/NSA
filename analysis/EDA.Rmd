@@ -11,45 +11,336 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r data preparation, include = F}
 library(tidyverse)
-path <- "/Volumes/GoogleDrive/My Drive/Nepal SA Study/Data"
+library(targets)
+library(lme4)
+library(rstanarm)
+library(lavaan)
+library(semTools)
 
-dat_ktm <- read_csv(file.path(path, "Baseline/cleaned/Baseline_Kathmandu.csv")) %>% as.data.frame()
-dat_pokhara <- read_csv(file.path(path, "Baseline/cleaned/Baseline_Pokhara.csv")) %>% as.data.frame()
-dat_baglung <- read_csv(file.path(path, "Baseline/cleaned/Baseline_Baglung.csv")) %>% as.data.frame()
+# stan option
+options(mc.cores = parallel::detectCores())
+
+# remove the students that did not give consent
+dat <- tar_read(dat_all_cleaned_reverse_coded)
+
+dim(dat)
 ```
 
-# Kathmandu
+# EDA
 
 ```{r}
-par(mfrow = c(6,6))
+ds <- skimr::skim(dat) %>% 
+  dplyr::mutate_if(is.numeric, round, 3) %>%
+  dplyr::rename_with( ~ gsub("^(numeric.)(.*)$", "\\2", .x),
+                      dplyr::starts_with("numeric.")) %>%
+  dplyr::select(-skim_type, -hist) %>%
+  dplyr::rename(variable = skim_variable)
+  
+flextable::flextable(ds) %>%
+  flextable::align(part = "all") %>%
+  flextable::font(fontname = "Times", part = "all") %>% 
+  flextable::bold(part = "header") %>%
+  flextable::fontsize(size = 10, part = "body") %>% 
+  flextable::line_spacing(space = 1) %>%
+  flextable::set_table_properties(layout = "autofit")
+```
 
-dat_ktm_s <- dat_ktm[,unlist(lapply(dat_ktm, is.numeric))]
+```{r}
 
-for (i in 1:ncol(dat_ktm_s)) {
-  hist(dat_ktm_s[,i], xlab = "", main = names(dat_ktm_s)[i])
+dat_s <- dat[,unlist(lapply(dat, is.numeric))]
+
+dat_s <- dat_s[,1:30]
+dat_s <- dat_s[,31:59]
+
+
+par(mfrow = c(5,6))
+for (i in 1:ncol(dat_s)) {
+  hist(dat_s[,i], xlab = "", main = names(dat_s)[i])
 }
 ```
 
-# Pokhara
+# Exploratory models for averaged survey outcomes
 
 ```{r}
-par(mfrow = c(6,6))
+fit_self_integrity <- stan_lmer(
+  self_integrity_e ~ self_integrity_b + treated_int + 
+    gender + age_b + student_type + father_edu + mother_edu +
+    father_occ + mother_occ + adult_members + siblings + duration_int + 
+    (treated_int | grade),
+  dat
+)
 
-dat_pokhara_s <- dat_pokhara[,unlist(lapply(dat_pokhara, is.numeric))]
+fit_self_esteem <- stan_lmer(
+  self_esteem_e ~ self_esteem_b + treated_int + 
+    gender + age_b + student_type + father_edu + mother_edu +
+    father_occ + mother_occ + adult_members + siblings + duration_int +
+    (treated_int | grade),
+  dat
+)
 
-for (i in 1:ncol(dat_pokhara_s)) {
-  hist(dat_pokhara_s[,i], xlab = "", main = names(dat_pokhara_s)[i])
-}
+fit_belonging <- stan_lmer(
+  belong_school_e ~ belong_school_b + treated_int + 
+    gender + age_b + student_type + father_edu + mother_edu +
+    father_occ + mother_occ + adult_members + siblings + duration_int +
+    (treated_int | grade),
+  dat
+)
+
+fit_stereotype <- stan_lmer(
+  stereotype_e ~ stereotype_b + treated_int + 
+    gender + age_b + student_type + father_edu + mother_edu +
+    father_occ + mother_occ + adult_members + siblings + duration_int +
+    (treated_int | grade),
+  dat
+)
+
+fit_threat_collective <- stan_lmer(
+  threat_collective_e ~ threat_collective_b + treated_int + 
+    gender + age_b + student_type + father_edu + mother_edu +
+    father_occ + mother_occ + adult_members + siblings + duration_int +
+    (treated_int | grade),
+  dat
+)
+
+fit_threat_stereotype <- stan_lmer(
+  threat_stereotype_e ~ threat_stereotype_b + treated_int + 
+    gender + age_b + student_type + father_edu + mother_edu +
+    father_occ + mother_occ + adult_members + siblings + duration_int +
+    (treated_int | grade),
+  dat
+)
+
+fit_threat_general <- stan_lmer(
+  threat_general_e ~ threat_general_b + treated_int + 
+    gender + age_b + student_type + father_edu + mother_edu +
+    father_occ + mother_occ + adult_members + siblings + duration_int +
+    (treated_int | grade),
+  dat
+)
+
+fit_academic_stress <- stan_lmer(
+  academic_stress_e ~ academic_stress_b + treated_int + 
+    gender + age_b + student_type + father_edu + mother_edu +
+    father_occ + mother_occ + adult_members + siblings + duration_int +
+    (treated_int | grade),
+  dat
+)
 ```
 
-# Baglung
+```{r}
+# library(report)
+# report(fit_self_integrity)
+
+# missing data is an issue with more complex models
+
+summary(fit_self_integrity, digits = 3) # no treatment effect
+summary(fit_self_esteem, digits = 3) # positive treatment effect
+summary(fit_belonging, digits = 3) # no treatment effect
+summary(fit_stereotype, digits = 3) # no treatment effect
+summary(fit_threat_collective, digits = 3) # no treatment effect
+summary(fit_threat_stereotype, digits = 3) # no treatment effect
+summary(fit_threat_general, digits = 3) # positive treatment effect (i.e. reducing stereotype)
+summary(fit_academic_stress, digits = 3) # no treatment effect
+
+
+```
+
+Affirmation increased students' self-esteem and reduced their perceived stereotype threat (but not the perceived stereotype). 
+
+That said, I will need to check the validity and reliability of these measures first. If they are not reliable, then it probably doesn't make too much sense to use them as outcomes.
+
+# Factor analysis
+
+## Reliability
 
 ```{r}
-par(mfrow = c(6,6))
+# correlation matrix
+# baseline
+cor_mat_b <- get.cor(dat |> select(capable_person_b:pressure_parent_teacher_b))
 
-dat_baglung_s <- dat_baglung[,unlist(lapply(dat_baglung, is.numeric))]
+cor_mat_b <- cor_mat_b %>%
+            tibble::rownames_to_column("variable") %>%
+            dplyr::rename(" " = variable)
 
-for (i in 1:ncol(dat_baglung_s)) {
-  hist(dat_baglung_s[,i], xlab = "", main = names(dat_baglung_s)[i])
-}
+flextable::flextable(cor_mat_b) %>%
+  flextable::add_footer_row(values = "* p < 0.05. ** p < 0.01. *** p < 0.001.",
+                  colwidths =  ncol(cor_mat_b)) %>%
+  flextable::align(part = "all") %>%
+  flextable::font(fontname = "Times", part = "all") %>%
+  flextable::bold(part = "header") %>%
+  flextable::bold(j = " ", part = "body") %>%
+  flextable::fontsize(size = 10, part = "all") %>%
+  flextable::italic(part = "footer") %>%
+  flextable::set_table_properties(layout = "autofit")
+
+# endline
+cor_mat_e <- get.cor(dat |> select(capable_person_e:pressure_parent_teacher_e))
+
+cor_mat_e <- cor_mat_e %>%
+            tibble::rownames_to_column("variable") %>%
+            dplyr::rename(" " = variable)
+
+flextable::flextable(cor_mat_e) %>%
+  flextable::add_footer_row(values = "* p < 0.05. ** p < 0.01. *** p < 0.001.",
+                  colwidths =  ncol(cor_mat_e)) %>%
+  flextable::align(part = "all") %>%
+  flextable::font(fontname = "Times", part = "all") %>%
+  flextable::bold(part = "header") %>%
+  flextable::bold(j = " ", part = "body") %>%
+  flextable::fontsize(size = 10, part = "all") %>%
+  flextable::italic(part = "footer") %>%
+  flextable::set_table_properties(layout = "autofit")
+```
+
+```{r}
+# self-integrity 
+df <- dat |> select(capable_person_b:comfortable_who_i_am_b)
+psych::omega(df) # 0.41
+
+df <- dat |> select(capable_person_e:comfortable_who_i_am_e)
+psych::omega(df) # 0.57
+
+# self-esteem
+df <- dat |> select(feel_smart_b:worried_other_think_b)
+psych::omega(df) # 0.54
+
+df <- dat |> select(feel_smart_e:worried_other_think_e)
+psych::omega(df) # 0.29
+
+# belonging
+df <- dat |> select(belong_school_b:ppl_like_me_b)
+psych::omega(df) # 0.57
+
+df <- dat |> select(belong_school_e:ppl_like_me_e)
+psych::omega(df) # 0.58
+
+# stereotype
+df <- dat |> select(worry_abt_dumb_b:worry_ppl_dislike_b)
+psych::omega(df) # 0.57
+
+df <- dat |> select(worry_abt_dumb_e:worry_ppl_dislike_e)
+psych::omega(df) # 0.5
+
+# stereotype all items
+df <- dat |> select(worry_abt_dumb_b:conclusion_abt_me_b)
+psych::omega(df) # 0.82
+
+df <- dat |> select(worry_abt_dumb_e:conclusion_abt_me_e)
+psych::omega(df) # 0.78
+
+# academic stress
+df <- dat |> select(bad_grades_b:pressure_parent_teacher_b)
+psych::omega(df) # 0.77
+
+df <- dat |> select(bad_grades_e:pressure_parent_teacher_e)
+psych::omega(df) # 0.82
+
+```
+
+Except for academic stress, the other scales all had really low reliability. This is probably because the other scales only have selected items from the original scale.
+
+It also seems to make sense to combine the items on perceived stereotype and perceived stereotype threat, the resulting construct having a very good reliability.
+
+Now we need to figure out how to deal with items on self-integrity, self-esteem, and social belonging.
+
+```{r}
+# self-integrity & self-esteem
+df <- dat |> select(capable_person_b:worried_other_think_b)
+psych::omega(df) # 0.67
+
+df <- dat |> select(capable_person_e:worried_other_think_e)
+psych::omega(df) # 0.62
+
+# belonging
+df <- dat |> select(belong_school_b:ppl_like_me_b)
+psych::omega(df) # 0.57
+
+df <- dat |> select(belong_school_e:ppl_like_me_e)
+psych::omega(df) # 0.58
+```
+
+```{r}
+# new composites
+dat <- dat |> 
+    mutate(
+      self_worth_b = rowMeans(across(capable_person_b:worried_other_think_b), na.rm = T),
+      self_worth_e = rowMeans(across(capable_person_e:worried_other_think_e), na.rm = T),
+      stereotype_b = rowMeans(across(worry_abt_dumb_b:conclusion_abt_me_b), na.rm = T),
+      stereotype_e = rowMeans(across(worry_abt_dumb_e:conclusion_abt_me_e), na.rm = T))
+
+# use factor score should be more rigorous
+model_self_worth <- '
+self_worth_f_b =~ capable_person_b + confident_abt_future_b + comfortable_who_i_am_b + feel_smart_b + concerned_abt_impression_b + respect_lookup_b + worried_other_think_b
+'
+
+fa_self_worth <- cfa(model_self_worth,
+                     data = dat)
+summary(fa_self_worth, fit.measures = T)
+  
+```
+
+```{r}
+fit_self_worth <- stan_lmer(
+  self_worth_e ~ self_worth_b + treated_int + 
+    gender + age_b + student_type + father_edu + mother_edu +
+    father_occ + mother_occ + adult_members + siblings + duration_int +
+    (treated_int | grade),
+  dat,
+  seed = 1234
+)
+
+fit_stereotype <- stan_lmer(
+  stereotype_e ~ stereotype_b + treated_int + 
+    gender + age_b + student_type + father_edu + mother_edu +
+    father_occ + mother_occ + adult_members + siblings + duration_int +
+    (treated_int | grade),
+  dat,
+  seed = 1234
+
+)
+
+fit_belonging <- stan_lmer(
+  belong_school_e ~ belong_school_b + treated_int + 
+    gender + age_b + student_type + father_edu + mother_edu +
+    father_occ + mother_occ + adult_members + siblings + duration_int +
+    (treated_int | grade),
+  dat,
+  seed = 1234
+)
+
+fit_academic_stress <- stan_lmer(
+  academic_stress_e ~ academic_stress_b + treated_int + 
+    gender + age_b + student_type + father_edu + mother_edu +
+    father_occ + mother_occ + adult_members + siblings + duration_int +
+    (treated_int | grade),
+  dat,
+  seed = 1234
+)
+
+# consider brms if I want to do this ordinal (and multilevel)
+
+# maybe a two-stage binary thing in stan model
+# use brms to get the model syntax and change it manually; can get more precise estimates of the treatment effect
+```
+
+```{r}
+# library(report)
+# report(fit_self_integrity)
+
+# missing data is an issue with more complex models
+
+summary(fit_self_worth, digits = 3) # no treatment effect
+
+#  - The effect of treated int (Median = 0.08, 95% CI [-0.05, 0.21]) has a 86.45% probability of
+# being positive (> 0), 78.20% of being significant (> 0.02), and 16.88% of being large (>
+# 0.14). The estimation successfully converged (Rhat = 1.000) and the indices are reliable (ESS
+# = 4724)
+
+# journal wants people to have a prior on the treatment variable as zero
+
+summary(fit_belonging, digits = 3) # negative treatment effect?
+summary(fit_stereotype, digits = 3) # no treatment effect
+summary(fit_academic_stress, digits = 3) # no treatment effect
+
+
 ```
