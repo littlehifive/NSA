@@ -126,13 +126,42 @@ merge_dat <- function(dat_b_cleaned, dat_e_cleaned, dat_int_cleaned){
   dat_all_cleaned <- dat_all_cleaned |> 
     mutate(treated_int = ifelse(form_int == "A", 1, 0))
   
+  # fill in the mode dates in each classroom for date_b and date_e when students actually have data collected
+  dat_all_cleaned <- dat_all_cleaned |> 
+    rowwise() |> 
+    mutate(n_cc_b = sum(!is.na(c_across(capable_person_b:pressure_parent_teacher_b))),
+           n_cc_e = sum(!is.na(c_across(capable_person_e:pressure_parent_teacher_e)))
+           ) # number of completed entries in survey items
+
+  dat_all_cleaned <- dat_all_cleaned |>
+    mutate(date_b = as.character(date_b),
+           date_e = as.character(date_e)) |> 
+    group_by(grade) |> 
+    mutate(date_b = ifelse(is.na(date_b) == T,
+                           ifelse(n_cc_b == 0,
+                                  NA,
+                                  get.mode(date_b)
+                                  ),
+                           date_b),
+           date_e = ifelse(is.na(date_e) == T,
+                           ifelse(n_cc_e == 0,
+                                  NA,
+                                  get.mode(date_e)
+                           ),
+                           date_e)
+           ) |> 
+    ungroup() |> 
+    mutate(date_b = ymd(date_b),
+           date_e = ymd(date_e))
+  
+  
   # reorder variables
   dat_all_cleaned <- dat_all_cleaned |> 
     select(sch_name:st_id, st_name, gender, age_b, age_e, student_type, 
            father_edu:siblings,
            date_int, treated_int, form_int:notes_int,
-           capable_person_b:notes_b,
-           capable_person_e:notes_e,
+           date_b, capable_person_b:notes_b,
+           date_e, capable_person_e:notes_e,
            enumerator_name_b, query_b:consent_b, enumerator_name_e:consent_e
            )
   

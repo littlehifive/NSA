@@ -428,3 +428,13 @@ names(dat_baglung) <- paste0(names(dat_baglung), "_b")
 
 return(dat_baglung)
 }
+
+# clean the baseline dates
+clean_dat_b_date <- function(dat_b_date_raw){
+  
+  dat_b_date <- dat_b_date_raw |> 
+    mutate(date_b = ymd(date_b)) |> 
+    rename(st_id_b = st_id)
+  
+  return(dat_b_date)
+}

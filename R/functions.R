@@ -39,3 +39,9 @@ get.cor <- function(fs_data){
   rownames(df) <- paste(1:nrow(df), ". ", rownames(df), sep = "")
   return(df)
 }
+
+# get mode in a vector
+get.mode <- function(v) {
+  uniqv <- unique(v)
+  uniqv[which.max(tabulate(match(v, uniqv)))]
+}

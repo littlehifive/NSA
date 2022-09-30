@@ -50,6 +50,13 @@ list(
       file.path(path, "Baseline/original/Baseline_Survey_NSA_Baglung_31032022_v01.xlsx")
     )
   ),  
+  tar_target(
+    dat_b_date_raw,
+    openxlsx::read.xlsx(
+      file.path(path, "Baseline/original/baseline_date.xlsx"),
+      sheet = 1,
+      detectDates = T)
+  ),
   
   # 1.2 load raw data - intervention
   tar_target(
@@ -90,6 +97,13 @@ list(
       file.path(path, "Endline/original/Endline_Baglung v0.1.xlsx")
     )
   ),
+  tar_target(
+    dat_e_date_raw,
+    openxlsx::read.xlsx(
+      file.path(path, "Endline/original/endline_date.xlsx"),
+      sheet = 1,
+      detectDates = T)
+  ),
   
   # 1.4 load name checks
   tar_target(
@@ -115,7 +129,11 @@ list(
   ),
   tar_target(
     dat_b_cleaned,
-    dplyr::bind_rows(dat_ktm_b_cleaned, dat_pokhara_b_cleaned, dat_baglung_b_cleaned)
+    dplyr::bind_rows(dat_ktm_b_cleaned, dat_pokhara_b_cleaned, dat_baglung_b_cleaned) |> 
+      left_join(
+        clean_dat_b_date(dat_b_date_raw),
+        by = "st_id_b"
+      )
   ),
   
   # 2.2 clean data - intervention
@@ -143,7 +161,11 @@ list(
   ),
   tar_target(
     dat_e_cleaned,
-    dplyr::bind_rows(dat_ktm_e_cleaned, dat_pokhara_e_cleaned, dat_baglung_e_cleaned)
+    dplyr::bind_rows(dat_ktm_e_cleaned, dat_pokhara_e_cleaned, dat_baglung_e_cleaned) |> 
+      left_join(
+        clean_dat_e_date(dat_e_date_raw),
+        by = "st_id_e"
+      )
   ),
   
   # 3.1 merge data - all waves

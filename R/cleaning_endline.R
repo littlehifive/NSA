@@ -159,3 +159,13 @@ clean_dat_baglung_e <- function(dat_baglung_e_raw, name_check){
   
   return(dat_baglung)
 }
+
+# clean the endline dates
+clean_dat_e_date <- function(dat_e_date_raw){
+  
+  dat_e_date <- dat_e_date_raw |> 
+    mutate(date_e = ymd(date_e)) |> 
+    rename(st_id_e = st_id)
+  
+  return(dat_e_date)
+}
