@@ -122,6 +122,28 @@ merge_dat <- function(dat_b_cleaned, dat_e_cleaned, dat_int_cleaned){
     arrange(sch_id, grade, temp_id) |>  # sort by grade and student ID
     select(-temp_id)
   
+  # create class ids for multilevel modeling
+  dat_all_cleaned <- dat_all_cleaned |> 
+    mutate(temp_id = gsub("^SCH(\\d+)_GR(\\d+)_ST(\\d+)$", "SCH\\1_GR\\2", st_id)) |> 
+    mutate(temp_id = factor(temp_id,
+                            levels = c("SCH1_GR6","SCH1_GR7","SCH1_GR8",
+                                       "SCH1_GR9","SCH1_GR10","SCH1_GR11",
+                                       "SCH1_GR12",
+                                       "SCH2_GR6","SCH2_GR7","SCH2_GR8",
+                                       "SCH2_GR9","SCH2_GR10","SCH2_GR11",
+                                       "SCH2_GR12",
+                                       "SCH3_GR6","SCH3_GR7","SCH3_GR8",
+                                       "SCH3_GR9","SCH3_GR10","SCH3_GR11",
+                                       "SCH3_GR12"
+                                       ))) |> 
+    group_by(temp_id) %>%
+    mutate(class_id = cur_group_id())
+  
+  # create class size
+  dat_all_cleaned <- dat_all_cleaned |> 
+    group_by(class_id) |> 
+    mutate(class_size = n())
+
   # combine intervention conditions
   dat_all_cleaned <- dat_all_cleaned |> 
     mutate(treated_int = ifelse(form_int == "A", 1, 0))
@@ -157,7 +179,7 @@ merge_dat <- function(dat_b_cleaned, dat_e_cleaned, dat_int_cleaned){
   
   # reorder variables
   dat_all_cleaned <- dat_all_cleaned |> 
-    select(sch_name:st_id, st_name, gender, age_b, age_e, student_type, 
+    select(sch_name:st_id, class_id, class_size, st_name, gender, age_b, age_e, student_type, 
            father_edu:siblings,
            date_int, treated_int, form_int:notes_int,
            date_b, capable_person_b:notes_b,
@@ -198,26 +220,26 @@ reverse_code_dat <- function(dat_all_cleaned){
                                  `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1)
     )
   
-  # create composite average scores
-  dat_all_cleaned_reverse_coded <- dat_all_cleaned_reverse_coded |> 
-    mutate(
-      self_integrity_b = rowMeans(across(capable_person_b:comfortable_who_i_am_b), na.rm = T),
-      self_integrity_e = rowMeans(across(capable_person_e:comfortable_who_i_am_e), na.rm = T),
-      self_esteem_b = rowMeans(across(feel_smart_b:worried_other_think_b), na.rm = T),
-      self_esteem_e = rowMeans(across(feel_smart_e:worried_other_think_e), na.rm = T),
-      belonging_b = rowMeans(across(belong_school_b:ppl_like_me_b), na.rm = T),
-      belonging_e = rowMeans(across(belong_school_e:ppl_like_me_e), na.rm = T), 
-      stereotype_b = rowMeans(across(worry_abt_dumb_b:worry_ppl_dislike_b), na.rm = T),
-      stereotype_e = rowMeans(across(worry_abt_dumb_e:worry_ppl_dislike_e), na.rm = T),
-      threat_collective_b = conclusion_other_deaf_b,
-      threat_collective_e = conclusion_other_deaf_e,
-      threat_stereotype_b = conclusion_my_perform_b,
-      threat_stereotype_e = conclusion_my_perform_e,
-      threat_general_b = conclusion_abt_me_b,
-      threat_general_e = conclusion_abt_me_e,
-      academic_stress_b = rowMeans(across(bad_grades_b:pressure_parent_teacher_b), na.rm = T),
-      academic_stress_e = rowMeans(across(bad_grades_e:pressure_parent_teacher_e), na.rm = T)
-    )
+  # create composite average scores (NOT USEFUL FOR NOW)
+  # dat_all_cleaned_reverse_coded <- dat_all_cleaned_reverse_coded |> 
+  #   mutate(
+  #     self_integrity_b = rowMeans(across(capable_person_b:comfortable_who_i_am_b), na.rm = T),
+  #     self_integrity_e = rowMeans(across(capable_person_e:comfortable_who_i_am_e), na.rm = T),
+  #     self_esteem_b = rowMeans(across(feel_smart_b:worried_other_think_b), na.rm = T),
+  #     self_esteem_e = rowMeans(across(feel_smart_e:worried_other_think_e), na.rm = T),
+  #     belonging_b = rowMeans(across(belong_school_b:ppl_like_me_b), na.rm = T),
+  #     belonging_e = rowMeans(across(belong_school_e:ppl_like_me_e), na.rm = T), 
+  #     stereotype_b = rowMeans(across(worry_abt_dumb_b:worry_ppl_dislike_b), na.rm = T),
+  #     stereotype_e = rowMeans(across(worry_abt_dumb_e:worry_ppl_dislike_e), na.rm = T),
+  #     threat_collective_b = conclusion_other_deaf_b,
+  #     threat_collective_e = conclusion_other_deaf_e,
+  #     threat_stereotype_b = conclusion_my_perform_b,
+  #     threat_stereotype_e = conclusion_my_perform_e,
+  #     threat_general_b = conclusion_abt_me_b,
+  #     threat_general_e = conclusion_abt_me_e,
+  #     academic_stress_b = rowMeans(across(bad_grades_b:pressure_parent_teacher_b), na.rm = T),
+  #     academic_stress_e = rowMeans(across(bad_grades_e:pressure_parent_teacher_e), na.rm = T)
+  #   )
   
   return(dat_all_cleaned_reverse_coded)
 }
