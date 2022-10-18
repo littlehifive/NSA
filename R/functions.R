@@ -45,3 +45,9 @@ get.mode <- function(v) {
   uniqv <- unique(v)
   uniqv[which.max(tabulate(match(v, uniqv)))]
 }
+
+# get ordinal omega reliability coefficients directly from data frame
+get.ordinal.omega <- function(data, nfactors = 1){
+  data <- psych::polychoric(data)
+  return(psych::omega(data$rho, nfactors = nfactors))
+}
