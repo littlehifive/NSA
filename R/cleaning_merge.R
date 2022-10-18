@@ -137,7 +137,8 @@ merge_dat <- function(dat_b_cleaned, dat_e_cleaned, dat_int_cleaned){
                                        "SCH3_GR12"
                                        ))) |> 
     group_by(temp_id) %>%
-    mutate(class_id = cur_group_id())
+    mutate(class_id = cur_group_id()) |> 
+    mutate(class_id = as.factor(class_id))
   
   # create class size
   dat_all_cleaned <- dat_all_cleaned |> 
@@ -243,3 +244,17 @@ reverse_code_dat <- function(dat_all_cleaned){
   
   return(dat_all_cleaned_reverse_coded)
 }
+
+# recode 5-point to 3-point
+
+combine_code_dat <- function(dat_all_cleaned_reverse_coded){
+  
+  dat_all_cleaned_combine_coded <- dat_all_cleaned_reverse_coded |> 
+    mutate_at(vars(capable_person_b:pressure_parent_teacher_b,
+                   capable_person_e:pressure_parent_teacher_e),
+              function(x){recode(x, `1` = 1, `2` = 1, `3` = 2, `4` = 3, `5` = 3)}
+    )
+  
+  return(dat_all_cleaned_combine_coded)
+}
+  

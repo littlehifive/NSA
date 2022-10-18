@@ -180,6 +180,12 @@ list(
     reverse_code_dat(dat_all_cleaned)
   ),
   
+  # 3.3 cleaned with with reverse code certain items & 5- to 3-point scale transformation - all waves 
+  tar_target(
+    dat_all_cleaned_combine_coded,
+    combine_code_dat(dat_all_cleaned_reverse_coded)
+  ),
+  
   # 4.1 export cleaned data - baseline
   tar_target(
     export_dat_ktm_b_cleaned,
@@ -234,5 +240,9 @@ list(
   tar_target(
     export_dat_all_cleaned_reverse_coded,
     readr::write_csv(dat_all_cleaned_reverse_coded, file.path(path, "Cleaned/All_cleaned_reverse_coded.csv"))
+  ),
+  tar_target(
+    export_dat_all_cleaned_combine_coded,
+    readr::write_csv(dat_all_cleaned_combine_coded, file.path(path, "Cleaned/All_cleaned_combine_coded.csv"))
   )
 )
