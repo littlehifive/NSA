@@ -196,25 +196,30 @@ merge_dat <- function(dat_b_cleaned, dat_e_cleaned, dat_int_cleaned){
   return(dat_all_cleaned)
 }
 
-# reverse code certain items so that larger values reflect better child development
+# reverse code certain items so that variable name reflects its positive/negative directions
 
 reverse_code_dat <- function(dat_all_cleaned){
   
   # reverse code
   dat_all_cleaned_reverse_coded <- dat_all_cleaned |> 
     mutate(
-      concerned_abt_impression_b = recode(concerned_abt_impression_b,
-                                          `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1),
-      concerned_abt_impression_e = recode(concerned_abt_impression_e,
-                                          `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1),
-      worried_other_think_b = recode(worried_other_think_b,
-                                     `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1),
-      worried_other_think_e = recode(worried_other_think_e,
-                                     `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1),
-      feel_outsider_b = recode(feel_outsider_b,
-                               `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1),
-      feel_outsider_e = recode(feel_outsider_e,
-                               `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1),
+      
+      # No need to make these positively directed since I am redoing EFA for all items
+      
+      # concerned_abt_impression_b = recode(concerned_abt_impression_b,
+      #                                     `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1),
+      # concerned_abt_impression_e = recode(concerned_abt_impression_e,
+      #                                     `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1),
+      # worried_other_think_b = recode(worried_other_think_b,
+      #                                `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1),
+      # worried_other_think_e = recode(worried_other_think_e,
+      #                                `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1),
+      # feel_outsider_b = recode(feel_outsider_b,
+      #                          `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1),
+      # feel_outsider_e = recode(feel_outsider_e,
+      #                          `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1),
+      
+      # 21.	I do not know what I would need to do to make a school teacher like me.
       teacher_like_me_b = recode(teacher_like_me_b,
                                  `1` = 5, `2` = 4, `3` = 3, `4` = 2, `5` = 1),
       teacher_like_me_e = recode(teacher_like_me_e,
