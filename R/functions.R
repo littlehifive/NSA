@@ -51,3 +51,31 @@ get.ordinal.omega <- function(data, nfactors = 1){
   data <- psych::polychoric(data)
   return(psych::omega(data$rho, nfactors = nfactors))
 }
+
+# get ordinal alpha reliability coefficients directly from data frame
+get.ordinal.alpha <- function(data){
+  data <- psych::polychoric(data)
+  return(psych::alpha(data$rho, check.keys=TRUE))
+}
+
+# get scree plot
+plot.scree <- function(efa_model) {
+  
+  # number of factors from EFA   
+  n_factors <- length(efa_model$e.values)
+  
+  # a data frame for eigenvalues
+  scree <- data.frame(
+    Factor_n =  as.factor(1:n_factors), 
+    Eigenvalue = efa_model$e.values)
+  
+  # scree plot
+  ggplot(scree, aes(x = Factor_n, y = Eigenvalue, group = 1)) + 
+    geom_point() + 
+    geom_line() +
+    xlab("Number of factors") +
+    ylab("Initial eigenvalue") +
+    labs(title = "Scree Plot", 
+         subtitle = "(Based on the unreduced correlation matrix)") + 
+    theme_bw()
+}
