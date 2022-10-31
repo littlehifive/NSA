@@ -1,0 +1,329 @@
+---
+title: "Measurement analysis"
+author: "Michael Wu"
+date: "2022-10-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r data preparation, include = F}
+library(tidyverse)
+library(targets)
+
+library(lavaan)
+library(semTools)
+library(kfa)
+library(mrautomatr)
+
+# using the master dataset with 1-5 (or 1-4) coding
+# because extreme cases (1s and 5s) matter a lot in a culture where people don't like to go to extremes
+dat <- tar_read(dat_all_cleaned_reverse_coded)
+
+# Not using the combine coded master dataset (i.e., 1-3)
+# dat_t <- tar_read(dat_all_cleaned_combine_coded)
+
+dim(dat)
+```
+
+# Item-level correlation
+
+```{r item-level correlation}
+# correlation matrix
+# baseline
+psych::cor.ci(dat |> select(capable_person_b:pressure_parent_teacher_b))
+
+# endline
+psych::cor.ci(dat |> select(capable_person_e:pressure_parent_teacher_e))
+```
+
+
+# EFA
+
+## Baseline EFA
+
+The following items (negatively worded) do not correlate with the other items in their original scales, and substantially lowered reliability if they are not reverse coded when calculating alpha for the original scales. Therefore, I dropped the following items from factor analysis at both baseline and endline (`teacher_like_me_b, concerned_abt_impression_b, feel_outsider_b, ppl_like_me_b`). 
+
+Because the recommended sample size for each fold is n = 200 in k-fold cross-validation, k is essentially 2 for this dataset.
+
+Based on 2-fold cross-validation, a 3-factor structure has the highest average reliability across folds. There is also no standardized loading across folds under 0.3. This factor structure also reasonably reflects three distinct constructs: f1 - self-esteem and social evaluative threat, f2 - stereotype threat, f3 - academic threat.
+
+`f1 =~ capable_person_b + confident_abt_future_b + comfortable_who_i_am_b + feel_smart_b + respect_lookup_b + belong_school_b + people_accept_b + comfortable_at_school_b`
+
+`f2 =~ worried_other_think_b + worry_abt_dumb_b + nervous_worried_b + worry_ppl_dislike_b + conclusion_other_deaf_b + conclusion_my_perform_b + conclusion_abt_me_b`
+
+`f3 =~ bad_grades_b + not_understand_class_b + not_understand_homework_b + bad_class_teacher_b + trouble_studying_b + pressure_parent_teacher_b`
+
+```{r Baseline EFA}
+# Scree plot
+dat_kfa_b <- dat |> select(capable_person_b:pressure_parent_teacher_b,
+                           -c(teacher_like_me_b, concerned_abt_impression_b,
+                           feel_outsider_b, ppl_like_me_b))
+
+efa_b <- psych::fa(dat_kfa_b, nfactors = 6)
+
+plot.scree(efa_b)
+
+
+# k is essentially 2 because the recommended sample size for each fold is 200
+# (Curran, Bollen, Chen, Paxton, & Kirby, 2003)
+kfa_b <- kfa(dat_kfa_b,
+             k = NULL,
+             m = 6,
+             seed = 1234)
+
+kfa_report(models = kfa_b,
+           file.name = "analysis/kfa_report_baseline",
+           report.title = "K-fold Factor Analysis - Baseline",
+           report.format = "html_document")
+
+```
+
+## Endline EFA
+
+The same 3-factor model at endline also yields the best CFA fit and reliability across folds. Reliability is lower as compared to baseline but still in an acceptable range.
+
+```{r Endline EFA}
+# Scree plot
+dat_kfa_e <- dat |> select(capable_person_e:pressure_parent_teacher_e,
+                           -c(teacher_like_me_e, concerned_abt_impression_e,
+                           feel_outsider_e, ppl_like_me_e))
+
+efa_e <- psych::fa(dat_kfa_e, nfactors = 6)
+
+plot.scree(efa_e)
+
+
+# k is essentially 2 because the recommended sample size for each fold is 200
+# (Curran, Bollen, Chen, Paxton, & Kirby, 2003)
+kfa_e <- kfa(dat_kfa_e,
+             k = NULL,
+             m = 6,
+             seed = 1234)
+
+kfa_report(models = kfa_e,
+           file.name = "analysis/kfa_report_endline",
+           report.title = "K-fold Factor Analysis - Endline",
+           report.format = "html_document")
+
+```
+
+# CFA
+
+We then run a CFA model at both baseline and endline based on the suggested solutions from kfa.
+
+In all models, model fits are evaluated using Hu and Bentler’s (1999) criteria: RMSEA (Root Mean Square Error Of Approximation) < 0.06, CFI (Comparative Fit Index) < 0.95, TLI (Tucker–Lewis Index) < 0.95, SRMR (Standardized Root Mean Squared Residual) < 0.08. 
+
+## Baseline CFA
+
+```{r Baseline CFA initial}
+# variable names
+var_b <- c("capable_person_b" , "confident_abt_future_b" , "comfortable_who_i_am_b" , "feel_smart_b" , "respect_lookup_b" , "belong_school_b" , "people_accept_b" , "comfortable_at_school_b",
+
+   "worried_other_think_b" , "worry_abt_dumb_b" , "nervous_worried_b" , "worry_ppl_dislike_b" , "conclusion_other_deaf_b" , "conclusion_my_perform_b" , "conclusion_abt_me_b",
+
+   "bad_grades_b" , "not_understand_class_b" , "not_understand_homework_b" , "bad_class_teacher_b" , "trouble_studying_b" , "pressure_parent_teacher_b") 
+
+# cfa model
+model_cfa_b <- '
+  # latent variable
+  
+  f1 =~ capable_person_b + confident_abt_future_b + comfortable_who_i_am_b + feel_smart_b + respect_lookup_b + belong_school_b + people_accept_b + comfortable_at_school_b
+  
+  f2 =~ worried_other_think_b + worry_abt_dumb_b + nervous_worried_b + worry_ppl_dislike_b + conclusion_other_deaf_b + conclusion_my_perform_b + conclusion_abt_me_b
+  
+  f3 =~ bad_grades_b + not_understand_class_b + not_understand_homework_b + bad_class_teacher_b + trouble_studying_b + pressure_parent_teacher_b
+'
+
+# only one 1 in this variable, collapsing that to 2
+dat_temp <- dat |> mutate(people_accept_b = recode(people_accept_b, `1` = 2))
+
+# cfa with ordinally scaled items
+fit_cfa_b <- lavaan::cfa(model_cfa_b,
+                         data = dat_temp,
+                         ordered = var_b)
+
+summary(fit_cfa_b, fit.measures = TRUE, standardized = TRUE)
+
+fit_measures_cfa_b <- fitMeasures(fit_cfa_b)
+```
+
+The fit indices in the initial model are not great (CFI = `r fit_measures_cfa_b["cfi.scaled"]`, TLI = `r fit_measures_cfa_b["tli.scaled"]`, RMSEA (`r fit_measures_cfa_b["rmsea.scaled"]`, SRMR = `r fit_measures_cfa_b["srmr.scaled"]`). 
+
+Therefore, I check the modification indices (MI): An MI is an estimate of the amount by which the chi-square would be reduced if a single parameter restriction were to be removed from the model. If a parameter is added based on a large MI, this is called a "post hoc model modification" and represents a data-driven modification of the original hypothesized model. It is not uncommon in practice for researchers to consult MIs to suggest model modifications that lead to a "better" fitting model.
+https://centerstat.org/what-are-modification-indices-and-should-i-use-them-when-fitting-sems-to-my-own-data/
+
+I am only adding in residual covariance links to allow the two observed variables to be correlated. This is sometimes done if it is believed that the two variables have something in common that is not captured by the latent variables. The added links should make theoretical sense. This way of increasing model fit is also justified here because I collapsed 6 scales into 3. The self-related items and the belonging-related items fall into the same factor from EFA, but certain items may be related to each other that are not captured by the latent factor. The same goes to the stereotype and stereotype-threat related items.  
+
+```{r Baseline CFA updated}
+# only adding in residual covariance
+modindices(fit_cfa_b) |> filter(mi > 3.84 & op == "~~") |> arrange(desc(mi))
+
+# cfa model
+model_cfa_b <- '
+  # latent variable
+  
+  f1 =~ capable_person_b + confident_abt_future_b + comfortable_who_i_am_b + feel_smart_b + respect_lookup_b + belong_school_b + people_accept_b + comfortable_at_school_b
+  
+  f2 =~ worried_other_think_b + worry_abt_dumb_b + nervous_worried_b + worry_ppl_dislike_b + conclusion_other_deaf_b + conclusion_my_perform_b + conclusion_abt_me_b
+  
+  f3 =~ bad_grades_b + not_understand_class_b + not_understand_homework_b + bad_class_teacher_b + trouble_studying_b + pressure_parent_teacher_b
+
+  # residual covariance
+
+  conclusion_other_deaf_b ~~ conclusion_my_perform_b # 2 types of conclusion
+  confident_abt_future_b ~~ comfortable_who_i_am_b # self-integrity 
+  comfortable_who_i_am_b ~~ comfortable_at_school_b # linkage between self-esteem and school performance
+  respect_lookup_b ~~ people_accept_b # belonging
+  comfortable_who_i_am_b ~~ people_accept_b # linkage between self-esteem and belonging
+  not_understand_class_b ~~ bad_class_teacher_b # bad performance- and bad teacher-induced stress
+'
+
+# only one 1 in this variable, collapsing that to 2
+dat_temp <- dat |> mutate(people_accept_b = recode(people_accept_b, `1` = 2))
+
+# cfa with ordinally scaled items
+fit_cfa_b <- lavaan::cfa(model_cfa_b,
+                         data = dat_temp,
+                         ordered = var_b)
+
+summary(fit_cfa_b, fit.measures = TRUE, standardized = TRUE)
+
+fit_measures_cfa_b <- fitMeasures(fit_cfa_b)
+```
+
+After adding in the additional links, the fit indices are acceptable(CFI, TLI) to good (RMSEA, SRMR).
+
+## Endline CFA
+
+```{r}
+# variable name
+var_e <- c("capable_person_e" , "confident_abt_future_e" , "comfortable_who_i_am_e" , "feel_smart_e" , "respect_lookup_e" , "belong_school_e" , "people_accept_e" , "comfortable_at_school_e",
+
+   "worried_other_think_e" , "worry_abt_dumb_e" , "nervous_worried_e" , "worry_ppl_dislike_e" , "conclusion_other_deaf_e" , "conclusion_my_perform_e" , "conclusion_abt_me_e",
+
+   "bad_grades_e" , "not_understand_class_e" , "not_understand_homework_e" , "bad_class_teacher_e" , "trouble_studying_e" , "pressure_parent_teacher_e") 
+
+# cfa model
+model_cfa_e <- '
+  # latent variable
+  
+  f1 =~ capable_person_e + confident_abt_future_e + comfortable_who_i_am_e + feel_smart_e + respect_lookup_e + belong_school_e + people_accept_e + comfortable_at_school_e
+  
+  f2 =~ worried_other_think_e + worry_abt_dumb_e + nervous_worried_e + worry_ppl_dislike_e + conclusion_other_deaf_e + conclusion_my_perform_e + conclusion_abt_me_e
+  
+  f3 =~ bad_grades_e + not_understand_class_e + not_understand_homework_e + bad_class_teacher_e + trouble_studying_e + pressure_parent_teacher_e
+'
+
+# cfa with ordinally scaled items
+fit_cfa_e <- lavaan::cfa(model_cfa_e,
+                         data = dat,
+                         ordered = var_e)
+
+summary(fit_cfa_e, fit.measures = TRUE, standardized = TRUE)
+
+fit_measures_cfa_e <- fitMeasures(fit_cfa_e)
+```
+
+The fit indices in the initial model are not great (CFI = `r fit_measures_cfa_e["cfi.scaled"]`, TLI = `r fit_measures_cfa_e["tli.scaled"]`, RMSEA (`r fit_measures_cfa_e["rmsea.scaled"]`, SRMR = `r fit_measures_cfa_e["srmr.scaled"]`). 
+
+Again, I check the modification indices (MI).
+
+```{r Endline CFA}
+# only adding in residual covariance
+modindices(fit_cfa_e) |> filter(mi > 3.84 & op == "~~") |> arrange(desc(mi))
+
+# cfa model
+model_cfa_e <- '
+  # latent variable
+  
+  f1 =~ capable_person_e + confident_abt_future_e + comfortable_who_i_am_e + feel_smart_e + respect_lookup_e + belong_school_e + people_accept_e + comfortable_at_school_e
+  
+  f2 =~ worried_other_think_e + worry_abt_dumb_e + nervous_worried_e + worry_ppl_dislike_e + conclusion_other_deaf_e + conclusion_my_perform_e + conclusion_abt_me_e
+  
+  f3 =~ bad_grades_e + not_understand_class_e + not_understand_homework_e + bad_class_teacher_e + trouble_studying_e + pressure_parent_teacher_e
+
+  # residual covariance
+
+  worried_other_think_e ~~ worry_abt_dumb_e # worry about others
+  conclusion_other_deaf_e ~~ conclusion_my_perform_e # 2 types of conclusion
+  worry_abt_dumb_e ~~       conclusion_abt_me_e # worry about others
+  worried_other_think_e ~~   conclusion_my_perform_e # worry about others
+  worry_abt_dumb_e ~~   conclusion_my_perform_e # worry about others
+  worry_abt_dumb_e ~~   conclusion_other_deaf_e # worry about others
+  comfortable_who_i_am_e ~~ comfortable_at_school_e # linkage between self-esteem and school performance
+'
+
+# cfa with ordinally scaled items
+fit_cfa_e <- lavaan::cfa(model_cfa_e,
+                         data = dat,
+                         ordered = var_e)
+
+summary(fit_cfa_e, fit.measures = TRUE, standardized = TRUE)
+
+fit_measures_cfa_e <- fitMeasures(fit_cfa_e)
+```
+
+After adding in the additional links, the fit indices are acceptable(CFI, TLI) to good (RMSEA, SRMR).
+
+# Internal consistency
+
+I am using the ordinal alphas from Zumbo (2007).
+
+Zumbo, B. D., Gadermann, A. M., & Zeisser, C. (2007). Ordinal versions of coefficients alpha and theta for Likert rating scales. Journal of Modern Applied Statistical Methods, 6(1), 21–29. doi: 10.22237/jmasm/1177992180
+
+## Baseline
+
+Both alpha and omega are acceptable to good.
+
+```{r Baseline internal consistency}
+# psych::omegaFromSem(fit_cfa_b)
+
+# reliability(fit_cfa_b)
+# alpha.ord 0.7425041 0.7915872 0.7794578
+
+# all: alpha = 0.77, omega_h = 0.82
+df <- dat |> select(all_of(var_b))
+get.ordinal.omega(df, nfactors = 3) 
+
+# f1: alpha = 0.73, omega = 0.73
+df <- dat |> select(all_of(c("capable_person_b", "confident_abt_future_b", "comfortable_who_i_am_b", "feel_smart_b", "respect_lookup_b", "belong_school_b", "people_accept_b", "comfortable_at_school_b")))
+get.ordinal.omega(df) 
+
+# f2: alpha = 0.77, omega = 0.77
+df <- dat |> select(all_of(c("worried_other_think_b", "worry_abt_dumb_b", "nervous_worried_b", "worry_ppl_dislike_b", "conclusion_other_deaf_b", "conclusion_my_perform_b", "conclusion_abt_me_b")))
+get.ordinal.omega(df) 
+
+# f3: alpha = 0.77, omega = 0.77
+df <- dat |> select(all_of(c("bad_grades_b", "not_understand_class_b", "not_understand_homework_b", "bad_class_teacher_b", "trouble_studying_b", "pressure_parent_teacher_b")))
+get.ordinal.omega(df) 
+```
+
+## Endline
+
+Both alpha and omega are acceptable. Although they are lower as compared to those at the baseline.
+
+```{r Endline internal consistency}
+# psych::omegaFromSem(fit_cfa_e)
+
+# reliability(fit_cfa_e)
+# alpha.ord 0.7032811 0.7073264 0.7847403
+
+# all: alpha = 0.75, omega_h = 0.80
+df <- dat |> select(all_of(var_e))
+get.ordinal.omega(df, nfactors = 3) 
+
+# f1: alpha = 0.64, omega = 0.66
+df <- dat |> select(all_of(c("capable_person_e", "confident_abt_future_e", "comfortable_who_i_am_e", "feel_smart_e", "respect_lookup_e", "belong_school_e", "people_accept_e", "comfortable_at_school_e")))
+get.ordinal.omega(df) 
+
+# f2: alpha = 0.73, omega = 0.74
+df <- dat |> select(all_of(c("worried_other_think_e", "worry_abt_dumb_e", "nervous_worried_e", "worry_ppl_dislike_e", "conclusion_other_deaf_e", "conclusion_my_perform_e", "conclusion_abt_me_e")))
+get.ordinal.omega(df) 
+
+# f3: alpha = 0.78, omega = 0.78
+df <- dat |> select(all_of(c("bad_grades_e", "not_understand_class_e", "not_understand_homework_e", "bad_class_teacher_e", "trouble_studying_e", "pressure_parent_teacher_e")))
+get.ordinal.omega(df) 
+```
