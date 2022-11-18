@@ -142,6 +142,9 @@ dat_ktm <- dat_ktm |>
   select(enumerator_name:st_id, st_name, gender:mother_occ_other, 
          father_edu_f:mother_occ_salary, adult_members:notes)
 
+# remove duplicates (if any)
+dat_ktm <- dat_ktm[!duplicated(dat_ktm), ]
+
 # add wave tag
 names(dat_ktm) <- paste0(names(dat_ktm), "_b")
 
@@ -282,6 +285,9 @@ dat_pokhara <- dat_pokhara |>
   select(enumerator_name:st_id, st_name, gender:mother_occ_other, 
          father_edu_f:mother_occ_salary, adult_members:notes)
 
+# remove duplicates (if any)
+dat_pokhara <- dat_pokhara[!duplicated(dat_pokhara), ]
+
 # add wave tag
 names(dat_pokhara) <- paste0(names(dat_pokhara), "_b")
 
@@ -419,6 +425,9 @@ dat_baglung <- dat_baglung |>
   rename(st_name = st_name_correct) |> 
   select(enumerator_name:st_id, st_name, gender:mother_occ_other, 
          father_edu_f:mother_occ_salary, adult_members:notes)
+
+# remove duplicates (if any)
+dat_baglung <- dat_baglung[!duplicated(dat_baglung), ]
 
 # add wave tag
 names(dat_baglung) <- paste0(names(dat_baglung), "_b")

@@ -29,6 +29,13 @@ clean_dat_ktm_e <- function(dat_ktm_e_raw, name_check){
     )) |> # fix these typos in gender
     mutate_at(vars(capable_person:conclusion_abt_me), function(x){ifelse(x == 6, NA_integer_, x)}) |> # change don't know to NA
     mutate_at(vars(bad_grades:pressure_parent_teacher), function(x){ifelse(x == 5, NA_integer_, x)}) # change don't know to NA
+ 
+  # choose the row with the correct age for SCH2_GR7_ST15 from double entries 
+  temp <- dat_ktm |> filter(st_id == "SCH2_GR7_ST15" & age == 15)
+
+  dat_ktm <- dat_ktm |> 
+    filter(st_id != "SCH2_GR7_ST15") |> 
+    bind_rows(temp)
   
   # sort data
   dat_ktm <- dat_ktm |> 
@@ -42,6 +49,9 @@ clean_dat_ktm_e <- function(dat_ktm_e_raw, name_check){
     select(-st_name) |> 
     rename(st_name = st_name_correct) |> 
     select(enumerator_name:st_id, st_name, gender:notes)
+  
+  # remove duplicates (if any)
+  dat_ktm <- dat_ktm[!duplicated(dat_ktm), ]
   
   # add wave tag
   names(dat_ktm) <- paste0(names(dat_ktm), "_e")
@@ -92,6 +102,9 @@ clean_dat_pokhara_e <- function(dat_pokhara_e_raw, name_check){
     select(-st_name) |> 
     rename(st_name = st_name_correct) |> 
     select(enumerator_name:st_id, st_name, gender:notes)
+  
+  # remove duplicates (if any)
+  dat_pokhara <- dat_pokhara[!duplicated(dat_pokhara), ]
   
   # add wave tag
   names(dat_pokhara) <- paste0(names(dat_pokhara), "_e")
@@ -153,6 +166,9 @@ clean_dat_baglung_e <- function(dat_baglung_e_raw, name_check){
     select(-st_name) |> 
     rename(st_name = st_name_correct) |> 
     select(enumerator_name:st_id, st_name, gender:notes)
+  
+  # remove duplicates (if any)
+  dat_baglung <- dat_baglung[!duplicated(dat_baglung), ]
   
   # add wave tag
   names(dat_baglung) <- paste0(names(dat_baglung), "_e")

@@ -177,6 +177,11 @@ merge_dat <- function(dat_b_cleaned, dat_e_cleaned, dat_int_cleaned){
     mutate(date_b = ymd(date_b),
            date_e = ymd(date_e))
   
+  # fill in the deaf student type for students in KTM and Pokhara who only participated in the intervention
+  dat_all_cleaned <- dat_all_cleaned |> 
+    mutate(student_type = ifelse(sch_id %in% c("2", "3"),
+                                 "Deaf",
+                                 student_type))
   
   # reorder variables
   dat_all_cleaned <- dat_all_cleaned |> 
@@ -192,6 +197,9 @@ merge_dat <- function(dat_b_cleaned, dat_e_cleaned, dat_int_cleaned){
   dat_all_cleaned <- dat_all_cleaned |> 
     filter(consent_b == "Yes" | is.na(consent_b) == T) |> 
     filter(consent_e == "Yes" | is.na(consent_e) == T)
+  
+  # remove duplicates (if any)
+  dat_all_cleaned <- dat_all_cleaned[!duplicated(dat_all_cleaned), ]
   
   return(dat_all_cleaned)
 }

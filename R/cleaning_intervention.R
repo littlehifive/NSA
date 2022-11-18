@@ -139,6 +139,9 @@ dat_int <- dat_int |>
   rename(st_name = st_name_correct) |> 
   select(sch_id:st_id, st_name, form:notes)
 
+# remove duplicates (if any)
+dat_int <- dat_int[!duplicated(dat_int), ]
+
 # add wave tag
 names(dat_int) <- paste0(names(dat_int), "_int")
 
