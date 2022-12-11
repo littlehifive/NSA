@@ -109,8 +109,14 @@ dat_int <- dat_int |>
 # clean int_q2
 dat_int <- clean_space(dat_int, "int_q2")
 
+# add a space after a dot (".") when there is a character directly following the dot
+dat_int$int_q2 <- gsub("(?<=\\.)(?=[^\\s])", " ", dat_int$int_q2, perl = TRUE)
+
 # clean int_q3
 dat_int <- clean_space(dat_int, "int_q3")
+
+# add a space after a dot (".") when there is a character directly following the dot
+dat_int$int_q3 <- gsub("(?<=\\.)(?=[^\\s])", " ", dat_int$int_q3, perl = TRUE)
 
 # clean mc_reason
 
