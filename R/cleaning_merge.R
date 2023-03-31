@@ -190,7 +190,9 @@ merge_dat <- function(dat_b_cleaned, dat_e_cleaned, dat_int_cleaned){
            date_int, treated_int, form_int:notes_int,
            date_b, capable_person_b:notes_b,
            date_e, capable_person_e:notes_e,
-           enumerator_name_b, query_b:consent_b, enumerator_name_e:consent_e
+           enumerator_name_b, query_b:consent_b, enumerator_name_e:consent_e,
+           nepali_scores_b:pedagogy_accounting_grades_b,
+           nepali_scores_e:pedagogy_accounting_grades_e
            )
   
   # remove the students that did not give consent

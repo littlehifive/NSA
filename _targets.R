@@ -32,6 +32,7 @@ list(
   ),
   
   # 1.1 load raw data - baseline
+  ## survey data
   tar_target(
     dat_ktm_b_raw,
     openxlsx::read.xlsx(
@@ -58,6 +59,26 @@ list(
       detectDates = T)
   ),
   
+  ## GPA data
+  tar_target(
+    dat_ktm_gpa_b_raw,
+    openxlsx::read.xlsx(
+      file.path(path, "Baseline/original/Baseline_GPA_NSA_21032023.xlsx"), sheet = 1
+    )
+  ),
+  tar_target(
+    dat_pokhara_gpa_b_raw,
+    openxlsx::read.xlsx(
+      file.path(path, "Baseline/original/Baseline_GPA_NSA_21032023.xlsx"), sheet = 2
+    )
+  ),
+  tar_target(
+    dat_baglung_gpa_b_raw,
+    openxlsx::read.xlsx(
+      file.path(path, "Baseline/original/Baseline_GPA_NSA_21032023.xlsx"), sheet = 3
+    )
+  ),  
+  
   # 1.2 load raw data - intervention
   tar_target(
     dat_int_form_a_raw,
@@ -79,6 +100,7 @@ list(
   ),
   
   # 1.3 load raw data - endline
+  ## survey data
   tar_target(
     dat_ktm_e_raw,
     openxlsx::read.xlsx(
@@ -105,6 +127,26 @@ list(
       detectDates = T)
   ),
   
+  ## GPA data
+  tar_target(
+    dat_ktm_gpa_e_raw,
+    openxlsx::read.xlsx(
+      file.path(path, "Endline/original/Endline_GPA_NSA_21032023.xlsx"), sheet = 1
+    )
+  ),
+  tar_target(
+    dat_pokhara_gpa_e_raw,
+    openxlsx::read.xlsx(
+      file.path(path, "Endline/original/Endline_GPA_NSA_21032023.xlsx"), sheet = 2
+    )
+  ),
+  tar_target(
+    dat_baglung_gpa_e_raw,
+    openxlsx::read.xlsx(
+      file.path(path, "Endline/original/Endline_GPA_NSA_21032023.xlsx"), sheet = 3
+    )
+  ),  
+  
   # 1.4 load name checks
   tar_target(
     name_check,
@@ -115,6 +157,7 @@ list(
     ),
   
   # 2.1 clean data - baseline
+  ## survey data
   tar_target(
     dat_ktm_b_cleaned,
     clean_dat_ktm_b(dat_ktm_b_raw, name_check)
@@ -127,12 +170,29 @@ list(
     dat_baglung_b_cleaned,
     clean_dat_baglung_b(dat_baglung_b_raw, name_check)
   ),
+  ## GPA data
+  tar_target(
+    dat_ktm_gpa_b_cleaned,
+    clean_dat_ktm_gpa_b(dat_ktm_gpa_b_raw)
+  ),
+  tar_target(
+    dat_pokhara_gpa_b_cleaned,
+    clean_dat_pokhara_gpa_b(dat_pokhara_gpa_b_raw)
+  ),
+  tar_target(
+    dat_baglung_gpa_b_cleaned,
+    clean_dat_baglung_gpa_b(dat_baglung_gpa_b_raw)
+  ),
   tar_target(
     dat_b_cleaned,
     dplyr::bind_rows(dat_ktm_b_cleaned, dat_pokhara_b_cleaned, dat_baglung_b_cleaned) |> 
       left_join(
         clean_dat_b_date(dat_b_date_raw),
         by = "st_id_b"
+      ) |> 
+      left_join(
+        bind_rows(dat_ktm_gpa_b_cleaned, dat_pokhara_gpa_b_cleaned, dat_baglung_gpa_b_cleaned),
+        by = c("st_id_b" = "st_id")
       )
   ),
   
@@ -147,6 +207,7 @@ list(
   ),
   
   # 2.3 clean data - endline
+  ## survey data
   tar_target(
     dat_ktm_e_cleaned,
     clean_dat_ktm_e(dat_ktm_e_raw, name_check)
@@ -159,12 +220,29 @@ list(
     dat_baglung_e_cleaned,
     clean_dat_baglung_e(dat_baglung_e_raw, name_check)
   ),
+  ## GPA data
+  tar_target(
+    dat_ktm_gpa_e_cleaned,
+    clean_dat_ktm_gpa_e(dat_ktm_gpa_e_raw)
+  ),
+  tar_target(
+    dat_pokhara_gpa_e_cleaned,
+    clean_dat_pokhara_gpa_e(dat_pokhara_gpa_e_raw)
+  ),
+  tar_target(
+    dat_baglung_gpa_e_cleaned,
+    clean_dat_baglung_gpa_e(dat_baglung_gpa_e_raw)
+  ),
   tar_target(
     dat_e_cleaned,
     dplyr::bind_rows(dat_ktm_e_cleaned, dat_pokhara_e_cleaned, dat_baglung_e_cleaned) |> 
       left_join(
         clean_dat_e_date(dat_e_date_raw),
         by = "st_id_e"
+      ) |> 
+      left_join(
+        bind_rows(dat_ktm_gpa_e_cleaned, dat_pokhara_gpa_e_cleaned, dat_baglung_gpa_e_cleaned),
+        by = c("st_id_e" = "st_id")
       )
   ),
   
@@ -184,6 +262,12 @@ list(
   tar_target(
     dat_all_cleaned_combine_coded,
     combine_code_dat(dat_all_cleaned_reverse_coded)
+  ),
+  
+  # 3.4 cleaned with with reverse code certain items & 5- to 3-point scale transformation & CFA factor scores - all waves
+  tar_target(
+    dat_all_cleaned_combine_coded_fscore,
+    create_fscore_dat(dat_all_cleaned_combine_coded)
   ),
   
   # 4.1 export cleaned data - baseline
@@ -244,5 +328,10 @@ list(
   tar_target(
     export_dat_all_cleaned_combine_coded,
     readr::write_csv(dat_all_cleaned_combine_coded, file.path(path, "Cleaned/All_cleaned_combine_coded.csv"))
+  ),
+  tar_target(
+    export_dat_all_cleaned_combine_coded_fscore,
+    readr::write_csv(dat_all_cleaned_combine_coded_fscore |> dplyr::select(st_id, fscore_f1_b:fscore_f3_e), 
+                     file.path(path, "Cleaned/factor_scores.csv"))
   )
 )

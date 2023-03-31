@@ -12,6 +12,7 @@
 # table(dat_ktm$siblings, useNA = "always")
 # sapply(dat_ktm[,18:44], table)
 
+# survey data
 clean_dat_ktm_b <- function(dat_ktm_b_raw, name_check){
   
 dat_ktm <- dat_ktm_b_raw |> 
@@ -155,6 +156,44 @@ return(dat_ktm)
 
 }
 
+
+# GPA data
+
+# test <- dat_ktm_gpa_b_raw |> select(st_id, st_name) |> left_join(
+# dat_all_cleaned |> select(st_id, st_name),
+# by = "st_id")
+
+# sapply(dat_ktm_gpa_b_raw[,5:18], table)
+# str(dat_ktm_gpa_b)
+
+clean_dat_ktm_gpa_b <- function(dat_ktm_gpa_b_raw){
+  
+  dat_ktm_gpa_b <- dat_ktm_gpa_b_raw |> 
+    select(-c(sch_id, st_name, grade))
+
+  dat_ktm_gpa_b <- dat_ktm_gpa_b |> 
+    mutate(social_studies_scores_b = NA,
+           .before = social_studies_grades_b) |> 
+    mutate(social_studies_gpa_b = letter_grade_to_gpa(social_studies_grades_b),
+           .before = social_studies_grades_b) |> 
+    mutate(pedagogy_accounting_scores_b = NA,
+           .before = pedagogy_accounting_grades_b) |> 
+    mutate(pedagogy_accounting_gpa_b = letter_grade_to_gpa(pedagogy_accounting_grades_b),
+           .before = pedagogy_accounting_grades_b) |> 
+    mutate_at(
+      vars(nepali_gpa_b, english_gpa_b, math_gpa_b, science_gpa_b),
+      as.numeric
+    ) |> 
+    mutate_at(
+      vars(nepali_grades_b, english_grades_b, math_grades_b, science_grades_b,
+           social_studies_grades_b, pedagogy_accounting_grades_b),
+      refactor_letter_grade
+    )
+  
+  return(dat_ktm_gpa_b)
+}
+  
+
 # 2. Pokhara baseline--------------------------------------------------------------
 
 # dat_pokhara_b_raw <- openxlsx::read.xlsx(file.path(path, "Baseline/original/Baseline_Survey_NSA_Pokhara_27032022_v01.xlsx"))
@@ -297,6 +336,76 @@ names(dat_pokhara) <- paste0(names(dat_pokhara), "_b")
 return(dat_pokhara)
 }
 
+# GPA data
+
+# test <- dat_pokhara_gpa_b_raw |> select(st_id, st_name) |> left_join(
+# dat_all_cleaned |> select(st_id, st_name),
+# by = "st_id")
+
+# sapply(dat_pokhara_gpa_b_raw[,5:18], table)
+# sapply(dat_pokhara_gpa_b[,2:15], table)
+# str(dat_pokhara_gpa_b)
+
+clean_dat_pokhara_gpa_b <- function(dat_pokhara_gpa_b_raw){
+  
+  # create GPA and letter grades for tests with 40 maximum score
+  dat_pokhara_gpa_b <- dat_pokhara_gpa_b_raw |> 
+    mutate(
+      nepali_gpa_b = ifelse(grade %in% c(6, 7, 9),
+                            scores_to_gpa(scale_40_to_100(nepali_scores_b)),
+                            nepali_gpa_b),
+      english_gpa_b = ifelse(grade %in% c(6, 7, 9),
+                            scores_to_gpa(scale_40_to_100(english_scores_b)),
+                            english_gpa_b),
+      math_gpa_b = ifelse(grade %in% c(6, 7, 9),
+                            scores_to_gpa(scale_40_to_100(math_scores_b)),
+                            math_gpa_b),      
+      science_gpa_b = ifelse(grade %in% c(6, 7, 9),
+                             scores_to_gpa(scale_40_to_100(science_scores_b)),
+                             science_gpa_b) 
+      ) |> 
+    mutate(
+      nepali_grades_b = ifelse(grade %in% c(6, 7, 9),
+                               scores_to_letter_grade(scale_40_to_100(nepali_scores_b)),
+                               nepali_grades_b),
+      english_grades_b = ifelse(grade %in% c(6, 7, 9),
+                                scores_to_letter_grade(scale_40_to_100(english_scores_b)),
+                                english_grades_b),
+      math_grades_b = ifelse(grade %in% c(6, 7, 9),
+                             scores_to_letter_grade(scale_40_to_100(math_scores_b)),
+                             math_grades_b),      
+      science_grades_b = ifelse(grade %in% c(6, 7, 9),
+                                scores_to_letter_grade(scale_40_to_100(science_scores_b)),
+                                science_grades_b)    
+      ) 
+  
+  dat_pokhara_gpa_b <- dat_pokhara_gpa_b |> 
+    select(-c(sch_id, st_name, grade)) |> 
+    rename(social_studies_scores_b = social_studies_grades_b,
+           pedagogy_accounting_scores_b = pedagogy_accounting_grades_b)
+  
+  dat_pokhara_gpa_b <- dat_pokhara_gpa_b |> 
+    mutate(math_grades_b = ifelse(math_grades_b == "NOT APPLICABLE FOR GR 11/12", 
+                                  NA_character_, math_grades_b)) |> 
+    mutate(social_studies_gpa_b = scores_to_gpa(social_studies_scores_b),
+           social_studies_grades_b = scores_to_letter_grade(social_studies_scores_b),
+           .after = social_studies_scores_b) |> 
+    mutate(pedagogy_accounting_gpa_b = scores_to_gpa(pedagogy_accounting_scores_b),
+           pedagogy_accounting_grades_b = scores_to_letter_grade(pedagogy_accounting_scores_b),
+           .after = pedagogy_accounting_scores_b) |> 
+    mutate_at(
+      vars(nepali_gpa_b, english_gpa_b, math_gpa_b, science_gpa_b,
+           social_studies_gpa_b, pedagogy_accounting_gpa_b),
+      as.numeric
+    ) |> 
+    mutate_at(
+      vars(nepali_grades_b, english_grades_b, math_grades_b, science_grades_b,
+           social_studies_grades_b, pedagogy_accounting_grades_b),
+      refactor_letter_grade
+    )
+  
+  return(dat_pokhara_gpa_b)
+}
 
 # 3. Baglung baseline ---------------------------------------------------------
 
@@ -438,9 +547,64 @@ names(dat_baglung) <- paste0(names(dat_baglung), "_b")
 return(dat_baglung)
 }
 
-# clean the baseline dates
-clean_dat_b_date <- function(dat_b_date_raw){
+# GPA data
+clean_dat_baglung_gpa_b <- function(dat_baglung_gpa_b_raw){
   
+  dat_baglung_gpa_b <- dat_baglung_gpa_b_raw |> 
+    mutate_at(vars(english_scores_b, nepali_scores_b, math_scores_b, science_scores_b),
+              ~ ifelse(tolower(.) == "absent", NA, .)) |> 
+    mutate_at(vars(english_scores_b, nepali_scores_b, math_scores_b, science_scores_b),
+              as.numeric)
+  
+  # create GPA and letter grades for tests with 40 maximum score
+  dat_baglung_gpa_b <- dat_baglung_gpa_b |> 
+    mutate(
+      nepali_gpa_b = scores_to_gpa(scale_40_to_100(nepali_scores_b)),
+      english_gpa_b = scores_to_gpa(scale_40_to_100(english_scores_b)),
+      math_gpa_b = scores_to_gpa(scale_40_to_100(math_scores_b)),
+      science_gpa_b = scores_to_gpa(scale_40_to_100(science_scores_b))
+    ) |> 
+    mutate(
+      nepali_grades_b = scores_to_letter_grade(scale_40_to_100(nepali_scores_b)),
+      english_grades_b = scores_to_letter_grade(scale_40_to_100(english_scores_b)),
+      math_grades_b = scores_to_letter_grade(scale_40_to_100(math_scores_b)),
+      science_grades_b = scores_to_letter_grade(scale_40_to_100(science_scores_b))
+    ) 
+  
+  dat_baglung_gpa_b <- dat_baglung_gpa_b |> 
+    select(-c(sch_id, st_name, grade))
+  
+  dat_baglung_gpa_b <- dat_baglung_gpa_b |> 
+    mutate(social_studies_scores_b = NA,
+           .before = social_studies_grades_b) |> 
+    mutate(social_studies_gpa_b = NA,
+           .before = social_studies_grades_b) |> 
+    mutate(pedagogy_accounting_scores_b = NA,
+           .before = pedagogy_accounting_grades_b) |> 
+    mutate(pedagogy_accounting_gpa_b = NA,
+           .before = pedagogy_accounting_grades_b) |> 
+    mutate_at(
+      vars(nepali_gpa_b, english_gpa_b, math_gpa_b, science_gpa_b,
+           social_studies_gpa_b, pedagogy_accounting_gpa_b),
+      as.numeric
+    ) |> 
+    mutate_at(
+      vars(nepali_grades_b, english_grades_b, math_grades_b, science_grades_b,
+           social_studies_grades_b, pedagogy_accounting_grades_b),
+      refactor_letter_grade
+    )
+  
+  dat_baglung_gpa_b <- dat_baglung_gpa_b |> 
+    select(st_id, nepali_scores_b:nepali_grades_b, english_scores_b:english_grades_b,
+           math_scores_b:pedagogy_accounting_grades_b)
+  
+  return(dat_baglung_gpa_b)
+}
+
+# 4. clean the baseline dates ---------------------------------------------
+
+clean_dat_b_date <- function(dat_b_date_raw){
+
   dat_b_date <- dat_b_date_raw |> 
     mutate(date_b = ymd(date_b)) |> 
     rename(st_id_b = st_id)

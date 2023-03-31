@@ -59,6 +59,42 @@ clean_dat_ktm_e <- function(dat_ktm_e_raw, name_check){
   return(dat_ktm)
 }
 
+
+# GPA data
+
+# sapply(dat_ktm_gpa_e[,2:15], table)
+# str(dat_ktm_gpa_b)
+
+clean_dat_ktm_gpa_e <- function(dat_ktm_gpa_e_raw){
+  
+  dat_ktm_gpa_e <- dat_ktm_gpa_e_raw |> 
+    rename_at(vars(ends_with("_b")), ~ paste0(sub("_b$", "_e", .)))
+  
+  dat_ktm_gpa_e <- dat_ktm_gpa_e |> 
+    select(-c(sch_id, st_name, grade))
+  
+  dat_ktm_gpa_e <- dat_ktm_gpa_e |> 
+    mutate(social_studies_scores_e = NA,
+           .before = social_studies_grades_e) |> 
+    mutate(social_studies_gpa_e = letter_grade_to_gpa(social_studies_grades_e),
+           .before = social_studies_grades_e) |> 
+    mutate(pedagogy_accounting_scores_e = NA,
+           .before = pedagogy_accounting_grades_e) |> 
+    mutate(pedagogy_accounting_gpa_e = letter_grade_to_gpa(pedagogy_accounting_grades_e),
+           .before = pedagogy_accounting_grades_e) |> 
+    mutate_at(
+      vars(nepali_gpa_e, english_gpa_e, math_gpa_e, science_gpa_e),
+      as.numeric
+    ) |> 
+    mutate_at(
+      vars(nepali_grades_e, english_grades_e, math_grades_e, science_grades_e,
+           social_studies_grades_e, pedagogy_accounting_grades_e),
+      refactor_letter_grade
+    )
+  
+  return(dat_ktm_gpa_e)
+}
+
 # 2. Pokhara endline---------------------------------------------------------------
 
 # names(dat_pokhara)
@@ -111,6 +147,74 @@ clean_dat_pokhara_e <- function(dat_pokhara_e_raw, name_check){
   
   return(dat_pokhara)
 }
+
+# GPA data
+
+# sapply(dat_pokhara_gpa_e_raw[,5:18], table)
+# sapply(dat_pokhara_gpa_e[,2:15], table)
+# str(dat_pokhara_gpa_e)
+clean_dat_pokhara_gpa_e <- function(dat_pokhara_gpa_e_raw){
+  
+  dat_pokhara_gpa_e <- dat_pokhara_gpa_e_raw |> 
+    rename_at(vars(ends_with("_b")), ~ paste0(sub("_b$", "_e", .)))
+  
+  # create GPA and letter grades for tests with 60 maximum score
+  dat_pokhara_gpa_e <- dat_pokhara_gpa_e |> 
+    mutate(
+      nepali_gpa_e = ifelse(grade %in% c(6, 7, 9),
+                            scores_to_gpa(scale_60_to_100(nepali_scores_e)),
+                            nepali_gpa_e),
+      english_gpa_e = ifelse(grade %in% c(6, 7, 9),
+                             scores_to_gpa(scale_60_to_100(english_scores_e)),
+                             english_gpa_e),
+      math_gpa_e = ifelse(grade %in% c(6, 7, 9),
+                          scores_to_gpa(scale_60_to_100(math_scores_e)),
+                          math_gpa_e),      
+      science_gpa_e = ifelse(grade %in% c(6, 7, 9),
+                             scores_to_gpa(scale_60_to_100(science_scores_e)),
+                             science_gpa_e) 
+    ) |> 
+    mutate(
+      nepali_grades_e = ifelse(grade %in% c(6, 7, 9),
+                               scores_to_letter_grade(scale_60_to_100(nepali_scores_e)),
+                               nepali_grades_e),
+      english_grades_e = ifelse(grade %in% c(6, 7, 9),
+                                scores_to_letter_grade(scale_60_to_100(english_scores_e)),
+                                english_grades_e),
+      math_grades_e = ifelse(grade %in% c(6, 7, 9),
+                             scores_to_letter_grade(scale_60_to_100(math_scores_e)),
+                             math_grades_e),      
+      science_grades_e = ifelse(grade %in% c(6, 7, 9),
+                                scores_to_letter_grade(scale_60_to_100(science_scores_e)),
+                                science_grades_e)    
+    ) 
+  
+  dat_pokhara_gpa_e <- dat_pokhara_gpa_e |> 
+    select(-c(sch_id, st_name, grade)) |> 
+    rename(social_studies_scores_e = social_studies_grades_e,
+           pedagogy_accounting_scores_e = pedagogy_accounting_grades_e)
+  
+  dat_pokhara_gpa_e <- dat_pokhara_gpa_e |> 
+    mutate(social_studies_gpa_e = scores_to_gpa(social_studies_scores_e),
+           social_studies_grades_e = scores_to_letter_grade(social_studies_scores_e),
+           .after = social_studies_scores_e) |> 
+    mutate(pedagogy_accounting_gpa_e = scores_to_gpa(pedagogy_accounting_scores_e),
+           pedagogy_accounting_grades_e = scores_to_letter_grade(pedagogy_accounting_scores_e),
+           .after = pedagogy_accounting_scores_e) |> 
+    mutate_at(
+      vars(nepali_gpa_e, english_gpa_e, math_gpa_e, science_gpa_e,
+           social_studies_gpa_e, pedagogy_accounting_gpa_e),
+      as.numeric
+    ) |> 
+    mutate_at(
+      vars(nepali_grades_e, english_grades_e, math_grades_e, science_grades_e,
+           social_studies_grades_e, pedagogy_accounting_grades_e),
+      refactor_letter_grade
+    )
+  
+  return(dat_pokhara_gpa_e)
+}
+
 
 # 3. Baglung endline---------------------------------------------------------------
 
@@ -176,7 +280,44 @@ clean_dat_baglung_e <- function(dat_baglung_e_raw, name_check){
   return(dat_baglung)
 }
 
-# clean the endline dates
+# GPA data
+clean_dat_baglung_gpa_e <- function(dat_baglung_gpa_e_raw){
+  
+  dat_baglung_gpa_e <- dat_baglung_gpa_e_raw |> 
+    rename_at(vars(ends_with("_b")), ~ paste0(sub("_b$", "_e", .)))
+  
+  dat_baglung_gpa_e <- dat_baglung_gpa_e |> 
+    select(-c(sch_id, st_name, grade))
+  
+  dat_baglung_gpa_e <- dat_baglung_gpa_e |> 
+    mutate(social_studies_scores_e = NA,
+           .before = social_studies_grades_e) |> 
+    mutate(social_studies_gpa_e = NA,
+           .before = social_studies_grades_e) |> 
+    mutate(pedagogy_accounting_scores_e = NA,
+           .before = pedagogy_accounting_grades_e) |> 
+    mutate(pedagogy_accounting_gpa_e = NA,
+           .before = pedagogy_accounting_grades_e) |> 
+    mutate_at(
+      vars(nepali_gpa_e, english_gpa_e, math_gpa_e, science_gpa_e,
+           social_studies_gpa_e, pedagogy_accounting_gpa_e),
+      as.numeric
+    ) |> 
+    mutate_at(
+      vars(nepali_grades_e, english_grades_e, math_grades_e, science_grades_e,
+           social_studies_grades_e, pedagogy_accounting_grades_e),
+      refactor_letter_grade
+    )
+  
+  dat_baglung_gpa_e <- dat_baglung_gpa_e |> 
+    select(st_id, nepali_scores_e:nepali_grades_e, english_scores_e:english_grades_e,
+           math_scores_e:pedagogy_accounting_grades_e)
+  
+  return(dat_baglung_gpa_e)
+}
+
+# 4. clean the endline dates-------------------------------------------------------------------------
+
 clean_dat_e_date <- function(dat_e_date_raw){
   
   dat_e_date <- dat_e_date_raw |> 
