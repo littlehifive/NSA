@@ -1,0 +1,475 @@
+---
+title: "text_analysis"
+author: "Michael Wu"
+date: "2022-12-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(tidyverse)
+library(targets)
+library(tidytext)
+library(topicmodels)
+
+# load data
+dat <- tar_read(dat_all_cleaned_reverse_coded)
+
+dat_treat <- dat |> filter(treated_int == 1)
+dat_control <- dat |> filter(treated_int == 0)
+```
+
+# Value domains
+
+```{r}
+# treated students
+
+values_treat <- c(dat_treat$int_q1_value_1_int, dat_treat$int_q1_value_2_int, dat_treat$int_q1_value_3_int)
+
+values_treat <- table(values_treat) |> as.data.frame()
+
+# control students
+values_control <- c(dat_control$int_q1_value_1_int, dat_control$int_q1_value_2_int, dat_control$int_q1_value_3_int)
+
+values_control <- table(values_control) |> as.data.frame()
+
+# merge
+values_combined <- values_treat |> 
+  left_join(values_control, by = c("values_treat" = "values_control"))
+
+names(values_combined) <- c("Values", "Treated", "Control")
+
+values_combined <- values_combined |> 
+  pivot_longer(
+    cols = Treated:Control,
+    names_to = "Condition",
+    values_to = "Count"
+  )
+
+# esquisse::esquisser()
+
+```
+
+```{r}
+values_combined$Values <- factor(values_combined$Values, levels = rev(unique(values_combined$Values)))
+
+values_combined$Condition <- factor(values_combined$Condition, levels = c( "Treated", "Control"))
+
+ggplot(values_combined) +
+  aes(x = Values, y = Count, fill = Condition) +
+  geom_col(position=position_dodge2(reverse = TRUE)) +
+  scale_fill_brewer(palette = "Pastel1", direction = -1) +
+  coord_flip() +
+  theme_bw()
+
+```
+
+
+# Prepare text data
+
+```{r}
+# prepare text data
+
+text_treat_full <- dat_treat |> 
+  mutate(text = ifelse(is.na(int_q3_int),
+                        int_q2_int,
+                        paste(int_q2_int, int_q3_int))
+         )
+  
+text_treat_full <- text_treat_full |> 
+  select(st_id, text)
+
+text_control_full <- dat_control |> 
+  mutate(text = ifelse(is.na(int_q3_int),
+                        int_q2_int,
+                        paste(int_q2_int, int_q3_int))
+         )
+  
+text_control_full <- text_control_full |> 
+  select(st_id, text)
+  
+```
+
+# Word count
+```{r}
+data(stop_words)
+
+# remove stop words
+tidy_treat <- text_treat_full |> 
+  unnest_tokens(word, text) |> 
+  anti_join(stop_words)
+
+tidy_control <- text_control_full |> 
+  unnest_tokens(word, text) |> 
+  anti_join(stop_words)
+
+# word count
+tidy_treat %>%
+  count(word, sort = TRUE) %>%
+  filter(n > 100) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(y = NULL) + 
+  theme_bw()
+
+tidy_control %>%
+  count(word, sort = TRUE) %>%
+  filter(n > 50) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(y = NULL) + 
+  theme_bw()
+```
+
+# Sentiment analysis
+```{r}
+# sentiment analysis
+
+tidy_treat_sentiment <- tidy_treat |> 
+   inner_join(get_sentiments("bing")) |> 
+   group_by(st_id) |> 
+   count(sentiment) |> 
+   pivot_wider(names_from = sentiment, 
+               values_from = n, 
+               values_fill = 0) %>% 
+  mutate(sentiment = positive - negative)
+
+tidy_control_sentiment <- tidy_control |> 
+   inner_join(get_sentiments("bing")) |> 
+   group_by(st_id) |> 
+   count(sentiment) |> 
+   pivot_wider(names_from = sentiment, 
+               values_from = n, 
+               values_fill = 0) %>% 
+  mutate(sentiment = positive - negative)
+
+par(mfrow = c(2,1))
+hist(tidy_treat_sentiment$sentiment, breaks = seq(-10, 40, 1), main = "Sentiment among affirmed students")
+hist(tidy_control_sentiment$sentiment, breaks = seq(-10, 40, 1), main = "Sentiment among control students")
+
+summary(tidy_treat_sentiment$sentiment)
+summary(tidy_control_sentiment$sentiment)
+
+```
+
+# Relationship between words
+
+```{r}
+# treated
+bigram_treat <- text_treat |> 
+  unnest_tokens(bigram, text, token = "ngrams", n = 2) |>
+  filter(!is.na(bigram)) |> 
+  separate(bigram, c("word1", "word2"), sep = " ") |> 
+  filter(!word1 %in% stop_words$word) |>
+  filter(!word2 %in% stop_words$word) |> 
+  count(word1, word2, sort = TRUE) |> 
+  unite(bigram, word1, word2, sep = " ") 
+  # bind_tf_idf(bigram, st_id, n) |> 
+  # arrange(desc(tf_idf))
+
+
+bigram_treat %>%
+  filter(n >= 5) |> 
+  mutate(bigram = reorder(bigram, n)) %>%
+  ggplot(aes(n, bigram)) +
+  geom_col() +
+  labs(y = NULL) + 
+  theme_bw()
+
+# control
+bigram_control <- text_control |> 
+  unnest_tokens(bigram, text, token = "ngrams", n = 2) |>
+  filter(!is.na(bigram)) |> 
+  separate(bigram, c("word1", "word2"), sep = " ") |> 
+  filter(!word1 %in% stop_words$word) |>
+  filter(!word2 %in% stop_words$word) |> 
+  count(word1, word2, sort = TRUE) |> 
+  unite(bigram, word1, word2, sep = " ") 
+  # bind_tf_idf(bigram, st_id, n) |> 
+  # arrange(desc(tf_idf))
+
+
+bigram_control %>%
+  filter(n >= 5) |> 
+  mutate(bigram = reorder(bigram, n)) %>%
+  ggplot(aes(n, bigram)) +
+  geom_col() +
+  labs(y = NULL) + 
+  theme_bw()
+```
+
+
+# LDA
+
+```{r}
+# treatment condition
+
+# document-term matrix
+tidy_treat_dtm <-  tidy_treat |> 
+  group_by(st_id) |> 
+  count(word, sort = TRUE) |>
+  bind_tf_idf(word, st_id, n) |> 
+  cast_dtm(st_id, word, n)
+
+
+tidy_treat_lda <- LDA(tidy_treat_dtm, 
+                      k = 10, # 14 value domains
+                      control = list(seed = 1234))
+
+# the per-topic-per-word probabilities
+tidy_treat_topics <- tidy(tidy_treat_lda, matrix = "beta")
+
+# plot top terms
+tidy_treat_terms <- tidy_treat_topics %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 10) %>% 
+  ungroup() %>%
+  arrange(topic, -beta)
+
+tidy_treat_terms %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(beta, term, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  scale_y_reordered() + 
+  theme_bw()
+
+# the terms that had the greatest difference in β between topic 1 and topic 2
+# 
+# treat_beta_wide <- tidy_treat_topics %>%
+#   mutate(topic = paste0("topic", topic)) %>%
+#   pivot_wider(names_from = topic, values_from = beta) %>% 
+#   filter(topic1 > .001 | topic2 > .001) %>%
+#   mutate(log_ratio = log2(topic2 / topic1))
+# 
+# treat_beta_wide %>%
+#  filter(log_ratio >= 30 | log_ratio <= -30) %>%
+#  ggplot() +
+#   aes(x = reorder(term, log_ratio), y = log_ratio) +
+#   geom_col(fill = "#112446") +
+#   coord_flip() +
+#   labs(x = "", 
+#        title = "Words with the greatest difference in β between topic 2 and topic 1") +
+#   theme_minimal() 
+```
+
+```{r}
+# control condition
+
+# document-term matrix
+tidy_control_dtm <-  tidy_control |> 
+  group_by(st_id) |> 
+  count(word, sort = TRUE) |>
+  bind_tf_idf(word, st_id, n) |> 
+  cast_dtm(st_id, word, n)
+
+
+tidy_control_lda <- LDA(tidy_control_dtm, 
+                      k = 10, # 14 value domains
+                      control = list(seed = 1234))
+
+# the per-topic-per-word probabilities
+tidy_control_topics <- tidy(tidy_control_lda, matrix = "beta")
+
+# plot top terms
+tidy_control_terms <- tidy_control_topics %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 10) %>% 
+  ungroup() %>%
+  arrange(topic, -beta)
+
+tidy_control_terms %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(beta, term, fill = factor(topic))) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~ topic, scales = "free") +
+  scale_y_reordered() + 
+  theme_bw()
+```
+
+# LIWC
+
+There is a dictionary of independent and interdependent words from the supplemental material in Tibbetts et al. (2016).
+
+```{r}
+ind_inter_words <- read_csv("data/ind_inter_words.csv")
+
+# change wildcard to regex
+ind_inter_words <- ind_inter_words |> 
+  mutate(ind_words = gsub("([a-zA-z-]+)(\\*)", "\\^\\1", ind_words)) |> 
+  mutate(inter_words = gsub("([a-zA-z-]+)(\\*)", "\\^\\1", inter_words))
+
+ind_words_regex <- paste0(
+  "(",
+  paste0(na.omit(ind_inter_words$ind_words), collapse=")|("),
+  ")"
+  )
+
+inter_words_regex <- paste0(
+  "(",
+  paste0(na.omit(ind_inter_words$inter_words), collapse=")|("),
+  ")"
+  )
+
+# independent
+
+# merge the ind/inter dict to the tokens
+tidy_treat_liwc <- tidy_treat |> 
+  mutate(
+    ind = grepl(ind_words_regex, word, ignore.case = T),
+    inter = grepl(inter_words_regex, word, ignore.case = T)
+    )
+
+## Students write about interdependent words 4 times more than the independent words.
+
+treat_ind_count <- tidy_treat_liwc |> 
+  filter(ind == T) |> 
+  select(word) |> 
+  group_by(word) |> 
+  count()
+
+treat_inter_count <- tidy_treat_liwc |>  
+  filter(inter == T) |> 
+  select(word) |> 
+  group_by(word) |> 
+  count()
+
+treat_ind_count |> 
+  ungroup() |> 
+  arrange(desc(n)) |> 
+  slice_head(n = 20) |> 
+  ggplot(aes(x = reorder(word, n), y = n)) + 
+  geom_col() +
+  scale_y_continuous(breaks = seq(0, 60, 10), labels = as.character(seq(0, 60, 10))) +
+  labs(x = "Count", y = "", title = "Count of independent Words (Top 20)") +
+  coord_flip() +
+  theme_bw()
+
+treat_inter_count |> 
+  ungroup() |> 
+  arrange(desc(n)) |> 
+  slice_head(n = 20) |> 
+  ggplot(aes(x = reorder(word, n), y = n)) + 
+  geom_col() +
+  labs(x = "Count", y = "", title = "Count of interdependent Words (Top 20)") +
+  coord_flip() +
+  theme_bw()
+
+```
+
+```{r}
+# interdependent
+
+# merge the ind/inter dict to the tokens
+tidy_control_liwc <- tidy_control |> 
+  mutate(
+    ind = grepl(ind_words_regex, word, ignore.case = T),
+    inter = grepl(inter_words_regex, word, ignore.case = T)
+    )
+
+## Students write about interdependent words 4 times more than the independent words.
+
+control_ind_count <- tidy_control_liwc |> 
+  filter(ind == T) |> 
+  select(word) |> 
+  group_by(word) |> 
+  count()
+
+control_inter_count <- tidy_control_liwc |>  
+  filter(inter == T) |> 
+  select(word) |> 
+  group_by(word) |> 
+  count()
+
+control_ind_count |> 
+  ungroup() |> 
+  arrange(desc(n)) |> 
+  slice_head(n = 20) |> 
+  ggplot(aes(x = reorder(word, n), y = n)) + 
+  geom_col() +
+  scale_y_continuous(breaks = seq(0, 60, 10), labels = as.character(seq(0, 60, 10))) +
+  labs(x = "Count", y = "", title = "Count of independent Words (Top 20)") +
+  coord_flip() +
+  theme_bw()
+
+control_inter_count |> 
+  ungroup() |> 
+  arrange(desc(n)) |> 
+  slice_head(n = 20) |> 
+  ggplot(aes(x = reorder(word, n), y = n)) + 
+  geom_col() +
+  labs(x = "Count", y = "", title = "Count of interdependent Words (Top 20)") +
+  coord_flip() +
+  theme_bw()
+```
+
+
+```{r}
+# merge the sum of ind/inter words per student back to the main dataset
+
+tidy_treat_liwc_count <- tidy_treat_liwc |> 
+  group_by(st_id) |> 
+  summarize(ind_count_treat = sum(ind),
+            inter_count_treat = sum(inter))
+
+tidy_control_liwc_count <- tidy_control_liwc |> 
+  group_by(st_id) |> 
+  summarize(ind_count_control = sum(ind),
+            inter_count_control = sum(inter))
+
+dat_liwc <- dat |> 
+  left_join(tidy_treat_liwc_count, by = "st_id") |> 
+  left_join(tidy_control_liwc_count, by = "st_id")
+
+
+dat_liwc |> 
+  group_by(treated_int) |> 
+  summarize(
+    ind_count_treat = mean(ind_count_treat, na.rm = T),
+    ind_count_control = mean(ind_count_control, na.rm = T),
+    inter_count_treat = mean(inter_count_treat, na.rm = T),
+    inter_count_control = mean(inter_count_control, na.rm = T)
+  )
+
+tidy_treat |> 
+  count(st_id) |> 
+  pull(n) |> 
+  mean()
+
+tidy_control |> 
+  count(st_id) |> 
+  pull(n) |> 
+  mean()
+
+```
+
+*Treated students*: 10.4 (19.6%) interdependent words, 2.78 (5.2%) independent words; out of 53 non-stop-word words
+
+*Control students*: 5.63 (16.1%) interdependent words, 1.59 (4.5%) independent words; out of 35 non-stop-word words
+
+This finding is still quite crude. In the control exercise, students still talk about why certain values are important to their friends/family, but not themselves. This also involves mentioning interdependent words.
+
+```{r}
+temp <- text_treat_full |> 
+  mutate(condition = "Treated") |> 
+  rbind(
+    text_control_full |> mutate(condition = "Control")
+  ) |> 
+  left_join(dat |> select(st_id, class_id, int_q1_value_1_int, int_q1_value_2_int, int_q1_value_3_int), by = "st_id") |> 
+  mutate(class_id = as.numeric(class_id)) |> 
+  mutate(id = as.numeric(gsub("^SCH(\\d+)_GR(\\d+)_ST(\\d+)$", "\\3", st_id))) |> 
+  arrange(class_id, id) |> 
+  select(class_id, st_id, condition, int_q1_value_1_int, int_q1_value_2_int, int_q1_value_3_int, text) |> 
+  rename(value_1 = int_q1_value_1_int, 
+         value_2 = int_q1_value_2_int,
+         value_3 = int_q1_value_3_int)
+
+openxlsx::write.xlsx(temp, "/Users/michaelfive/Desktop/R Directory/NSA_qual/NSA_intervention.xlsx")
+```
+
