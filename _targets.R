@@ -190,7 +190,7 @@ list(
         clean_dat_b_date(dat_b_date_raw),
         by = "st_id_b"
       ) |> 
-      left_join(
+      full_join(
         bind_rows(dat_ktm_gpa_b_cleaned, dat_pokhara_gpa_b_cleaned, dat_baglung_gpa_b_cleaned),
         by = c("st_id_b" = "st_id")
       )
@@ -240,7 +240,7 @@ list(
         clean_dat_e_date(dat_e_date_raw),
         by = "st_id_e"
       ) |> 
-      left_join(
+      full_join(
         bind_rows(dat_ktm_gpa_e_cleaned, dat_pokhara_gpa_e_cleaned, dat_baglung_gpa_e_cleaned),
         by = c("st_id_e" = "st_id")
       )
