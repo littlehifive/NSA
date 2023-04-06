@@ -408,3 +408,80 @@ get.fs.model.results.deaf.secondary <- function(data = dat_mi_deaf,
   
   return(list(fit_f1, fit_f2, fit_f3))
 }
+
+
+get.model.results.primary <- function(data = dat_s, 
+                                      my_prior = prior("normal(0, 1)", class = "b")){
+  
+  fit_nepali <- brm(
+    nepali_gpa_e ~ nepali_gpa_b + treated_int +
+      class_size + grade + gender + age_b + 
+      father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (treated_int | class_id),
+    data = data,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+  
+  fit_english <- brm(
+    english_gpa_e ~ english_gpa_b + treated_int +
+      class_size + grade + gender + age_b + 
+      father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (treated_int | class_id),
+    data = data,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+  
+  fit_math <- brm(
+    math_gpa_e ~ math_gpa_b + treated_int +
+      class_size + grade + gender + age_b + 
+      father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (treated_int | class_id),
+    data = data,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+  
+  fit_science <- brm(
+    science_gpa_e ~ science_gpa_b + treated_int +
+      class_size + grade + gender + age_b + 
+      father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (treated_int | class_id),
+    data = data,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+  
+  fit_all <- brm(
+    all_gpa_e ~ all_gpa_b + treated_int +
+      class_size + grade + gender + age_b + 
+      father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (treated_int | class_id),
+    data = data,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+  
+  return(list(fit_nepali, fit_english, fit_math, fit_science, fit_all))
+}

@@ -21,6 +21,7 @@ library(performance)
 library(broom.mixed)
 library(lme4)
 library(bayesplot)
+library(interactions)
 
 source("R/functions.R")
 
@@ -147,6 +148,9 @@ dat_mi_deaf <- mice::mice(dat_s_deaf, m = 5, seed = 1234)
 ```
 
 ## Using factor scores + GPA data
+
+It may not make sense to impute GPA data at all given the biases introduced (see GPT-4 answers). So for GPA analysis, I will use complete cases.
+
 ```{r}
 dat_s <- dat_fs |> filter(!is.na(treated_int))
 
@@ -162,19 +166,48 @@ dat_s <- dat_s |> select(
   siblings, treated_int, duration_int, 
   int_q1_value_1_int, int_q1_value_2_int, int_q1_value_3_int,
   mc_survey_1_int:mc_survey_4_int,
-  nepali_gpa_b, english_gpa_b, math_gpa_b, science_gpa_b,
-  nepali_gpa_e, english_gpa_e, math_gpa_e, science_gpa_e,
+  nepali_scores_b:science_grades_b,
+  nepali_scores_e:science_grades_e,
   fscore_f1_b:fscore_f3_e)
 
 dat_s$all_gpa_b <- rowMeans(dat_s[,c("nepali_gpa_b", "english_gpa_b", "math_gpa_b", "science_gpa_b")], na.rm = T)
 dat_s$all_gpa_e <- rowMeans(dat_s[,c("nepali_gpa_e", "english_gpa_e", "math_gpa_e", "science_gpa_e")], na.rm = T)
 
-# multiple imputation on data including all students  
-dat_mi <- mice::mice(dat_s, m = 5, seed = 1234)
+dat_s <- dat_s |> 
+  filter(!(sch_id == 3 & grade == 12)) |> 
+  filter(!(sch_id == 2 & grade %in% c(11, 12))) |> 
+  filter(!(sch_id == 1 & grade %in% c(11, 12)))
 
-# multiple imputation on data including only deaf students
 dat_s_deaf <- dat_s |> filter(student_type == "Deaf")
-dat_mi_deaf <- mice::mice(dat_s_deaf, m = 5, seed = 1234)
+ 
+# grade 11 in Pokhara did not have math and science tests (but I cannot exclude the variables from imputation since there are substantial missingness in other schools)
+# dat_mi_method <- mice::make.method(dat_s)
+# dat_mi_method["math_gpa_b"] <- ""
+# dat_mi_method["science_gpa_b"] <- ""
+# dat_mi_method["math_gpa_e"] <- ""
+# dat_mi_method["science_gpa_e"] <- ""
+
+# multiple imputation on data including all students 
+
+# dat_s_mi <- dat_s |> select(
+#   st_id, sch_id, grade, class_id, class_size, gender, age_b, student_type, father_edu_f,
+#   mother_edu_f, father_occ_salary, mother_occ_salary, adult_members,
+#   siblings, treated_int, duration_int, 
+#   # int_q1_value_1_int, int_q1_value_2_int, int_q1_value_3_int,
+#   # mc_survey_1_int:mc_survey_4_int,
+#   # nepali_gpa_b, english_gpa_b, math_gpa_b, science_gpa_b,
+#   # nepali_gpa_e, english_gpa_e, math_gpa_e, science_gpa_e,
+#   all_gpa_b, all_gpa_e,
+#   fscore_f1_b:fscore_f3_e)
+# 
+# dat_mi <- mice::mice(dat_s_mi, m = 5, seed = 1234)
+# 
+# # x <- complete(dat_mi, 4)
+# # View(filter(x, sch_id == 3))
+# 
+# # multiple imputation on data including only deaf students
+# dat_s_deaf <- dat_s |> filter(student_type == "Deaf")
+# dat_mi_deaf <- mice::mice(dat_s_deaf, m = 5, seed = 1234)
 ```
 
 # Descriptives
@@ -1157,74 +1190,106 @@ ggplot(data = df,
 
 ```
 
-# MI on GPA data
+# Complete-case GPA data
 
 ```{r}
-fit_nepali <- brm(
+my_prior <- prior("normal(0, 1)", class = "b")
+# my_prior <- prior("normal(0, 1)", class = "b") + 
+#     prior("normal(0.145, 0.2175)", coef = "treated_int")
+
+# check default priors for other parameters
+validate_prior(
+    my_prior,
     nepali_gpa_e ~ nepali_gpa_b + treated_int +
       class_size + grade + gender + age_b + father_edu_f + mother_edu_f +
       father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
       (treated_int | class_id),
-    data = dat_s_deaf,
-    prior = prior("normal(0, 1)"), 
-    chains = 4,
-    seed = 1234
+  dat_s)
+```
+
+```{r check missing value}
+test <- dat_s |> select(
+      st_id, all_gpa_e, all_gpa_b, treated_int, class_size, grade, gender, age_b, father_edu_f, mother_edu_f, father_occ_salary, mother_occ_salary, adult_members, siblings, duration_int, sch_id, class_id)
+
+md.pattern(test, rotate.names = TRUE)
+
+View(dat_fs |> filter(st_id == "SCH1_GR6_ST10"))
+
+
+# Tests the null hypothesis that the missing data is Missing Completely At Random (MCAR). A p.value of less than 0.05 is usually interpreted as being that the missing data is not MCAR (i.e., is either Missing At Random or non-ignorable).
+
+test <- dat_s |> select(
+      st_id, all_gpa_e, all_gpa_b, treated_int, class_size, grade, gender, age_b, father_edu_f, mother_edu_f, father_occ_salary, mother_occ_salary, adult_members, siblings, duration_int)
+
+
+#   statistic    df p.value missing.patterns
+#       <dbl> <dbl>   <dbl>            <int>
+# 1      199.   171  0.0677               14
+naniar::mcar_test(test)
+
+
+#   statistic    df p.value missing.patterns
+#       <dbl> <dbl>   <dbl>            <int>
+# 1     5428.  5269  0.0618              117
+naniar::mcar_test(dat_s |> select(-sch_id, -class_id))
+
+# So the missing data is MCAR.
+```
+
+```{r GPA descriptives}
+test <- dat_s |> ungroup() |>  select(treated_int, class_id, all_gpa_b, all_gpa_e)
+
+test <- test |> pivot_longer(all_gpa_b:all_gpa_e, names_to = "wave", values_to = "gpa", names_pattern = ".*_([be])$")
+
+test <- test |> 
+  group_by(class_id, treated_int, wave) |> 
+  summarise(
+    gpa_m = mean(gpa, na.rm = T),
+    gpa_se = sd(gpa, na.rm = T) / sqrt(length(gpa))
   )
-
-fit_english <- brm(
-    english_gpa_e ~ english_gpa_b + treated_int +
-      class_size + grade + gender + age_b + father_edu_f + mother_edu_f +
-      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
-      (treated_int | class_id),
-    data = dat_s_deaf,
-    prior = prior("normal(0, 1)"), 
-    chains = 4,
-    seed = 1234
-  )
-
-fit_math <- brm(
-    math_gpa_e ~ math_gpa_b + treated_int +
-      class_size + grade + gender + age_b + father_edu_f + mother_edu_f +
-      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
-      (treated_int | class_id),
-    data = dat_s_deaf,
-    prior = prior("normal(0, 1)"), 
-    chains = 4,
-    seed = 1234
-  )
-
-fit_science <- brm(
-    science_gpa_e ~ science_gpa_b + treated_int +
-      class_size + grade + gender + age_b + father_edu_f + mother_edu_f +
-      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
-      (treated_int | class_id),
-    data = dat_s_deaf,
-    prior = prior("normal(0, 1)"), 
-    chains = 4,
-    seed = 1234
-  )
+  
+ggplot(test, aes(x = wave, y = gpa_m, fill = factor(treated_int))) + 
+  geom_bar(stat="identity", color="black", 
+           position=position_dodge()) +
+  geom_errorbar(aes(ymin=gpa_m - gpa_se, ymax = gpa_m + gpa_se), width=.2,
+                 position=position_dodge(.9)) + 
+  scale_y_continuous(limits = c(0, 4)) +
+  facet_wrap(~ class_id) +
+  theme_bw()
+```
 
 
-fit_all <- brm(
-    all_gpa_e ~ all_gpa_b + treated_int +
-      class_size + grade + gender + age_b + father_edu_f + mother_edu_f +
-      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
-      (treated_int | class_id),
-    data = dat_s_deaf,
-    prior = prior("normal(0, 1)"), 
-    chains = 4,
-    seed = 1234
-  )
+```{r GPA as outcome all student}
 
-hypothesis(fit_nepali, "treated_int > 0")
-hypothesis(fit_english, "treated_int > 0")
-hypothesis(fit_math, "treated_int > 0")
-hypothesis(fit_science, "treated_int > 0")
-hypothesis(fit_all, "treated_int > 0")
+model_list_gpa_p1 <- get.model.results.primary(
+  data = dat_s, 
+  my_prior = prior("normal(0, 1)", class = "b")
+)
+
+model_list_gpa_p2 <- get.model.results.primary(
+  data = dat_s, 
+  my_prior = prior("normal(0, 1)", class = "b") + 
+    prior("normal(0.145, 0.2175)", coef = "treated_int")
+)
+
+hypothesis(model_list_gpa_p1[[1]], "treated_int > 0")
+hypothesis(model_list_gpa_p1[[2]], "treated_int > 0")
+hypothesis(model_list_gpa_p1[[3]], "treated_int > 0")
+hypothesis(model_list_gpa_p1[[4]], "treated_int > 0")
+hypothesis(model_list_gpa_p1[[5]], "treated_int > 0")
+
+
+test <- bayesfactor_parameters(
+  model_list_gpa_p1[[5]], 
+  null = 0,
+  direction = ">")
+
+library(see)
+plot(test)
 
 summary(fit_all)
 
-draws <- as_draws_df(fit_all)
+draws <- as_draws_df(model_list_gpa_p1[[5]])
 
 plot.kdensity(draws$b_treated_int, value = 0,
               xlab = "Treatment - Control",
@@ -1232,7 +1297,225 @@ plot.kdensity(draws$b_treated_int, value = 0,
               col1 = "steelblue1",
               col2 = "firebrick1")
 
-rope(fit_all, ci = 0.95)
+# consider es = 0.01 as negligible
+rope(model_list_gpa_p1[[5]], ci = 0.95, 
+     range = c(-sd(dat_s$all_gpa_e, na.rm = T) * 0.01, 
+               sd(dat_s$all_gpa_e, na.rm = T) * 0.01))
 
+# using the empirical benchmark in Kraft (2020)
+sexit(model_list_gpa_p1[[5]], significant = 0.05 * sd(dat_s$all_gpa_e, na.rm = T), large = 0.2 * sd(dat_s$all_gpa_e, na.rm = T), ci = 0.95)[3,]
+```
+
+### Moderation effect (prior performance)
+
+```{r}
+# create low-performing variable
+dat_s <- dat_s |> 
+  group_by(class_id) |> 
+  mutate(low_performing = as.numeric(all_gpa_b <= median(all_gpa_b)))
+```
+
+```{r}
+fit_all_interaction_low_performance <- brm(
+    all_gpa_e ~ all_gpa_b + treated_int * low_performing +
+      class_size + grade + gender + age_b + 
+      father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (treated_int | class_id),
+    data = dat_s,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+hypothesis(fit_all_interaction_low_performance, "treated_int > 0")
+
+hypothesis(fit_all_interaction_low_performance, "treated_int:low_performing < 0")
+```
+
+```{r}
+fit_all_interaction_age <- brm(
+    all_gpa_e ~ all_gpa_b + treated_int * age_b +
+      class_size + grade + gender + 
+      father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (treated_int | class_id),
+    data = dat_s,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+hypothesis(fit_all_interaction_age, "treated_int > 0")
+
+hypothesis(fit_all_interaction_age, "treated_int:age_b < 0")
+```
+
+```{r}
+fit_all_interaction_grade <- brm(
+    all_gpa_e ~ all_gpa_b + treated_int * grade +
+      class_size + age_b + gender + 
+      father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (treated_int | class_id),
+    data = dat_s,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+hypothesis(fit_all_interaction_grade, "treated_int > 0")
+```
+
+```{r}
+fit_all_interaction_gender <- brm(
+    all_gpa_e ~ all_gpa_b + treated_int * gender + grade +
+      class_size + age_b + gender + 
+      father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (treated_int | class_id),
+    data = dat_s,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+hypothesis(fit_all_interaction_gender, "treated_int > 0")
+hypothesis(fit_all_interaction_gender, "treated_int:genderMale < 0")
+```
+
+### Moderation effect (psychological threat)
+
+Interestingly, the affirmation effect is more pronounced for deaf students experiencing less stereotype threat (or psychological threat in general) at baseline.
+
+Ferrer & Cohen (2018) mentioned that "for self-affirmation to be beneficial, there must be a threat to self-adequacy or self-integrity and, moreover, that psychological threat must impede behavior change." Therefore, it is reasonable to think that self-affirmation works better when there are more threats present (and especially when these threats impede adaptive behavior). 
+
+In our study context, it is unlikely that stereotype threat "facilitates" adaptive outcomes since it is a major source of stress among deaf students. Therefore, the finding that the treatment effect is larger for deaf students experiencing less stereotype threat may arise due to uniqueness of the population and context. It is possible that for deaf students, there is a pervasive psychological threat that is salient in all aspects of their life. Those experiencing too much threat may not benefit much from a brief reflection exercise, while those experiencing relatively less threat (but still much more compared to hearing students) may be the proper target of self-affirmation.
+
+Additionally, being in the poor-performing group at baseline does not moderate the treatment effect. This may again speak to the fact that for this particular population, affirmation seems to affect performance directly through alleviating stereotype threat.
+
+*Composite psychological threat (average of all three factors)*
+
+```{r}
+dat_s$fscore_f1_b_rev <- -dat_s$fscore_f1_b
+
+dat_s$psych_threat <- rowMeans(dat_s[, c("fscore_f1_b_rev", "fscore_f2_b", "fscore_f2_b")], na.rm = T)
+
+hist(dat_s$psych_threat)
+
+fit_all_interaction_psych_threat <- brm(
+    all_gpa_e ~ all_gpa_b + treated_int * psych_threat + gender + grade +
+      class_size + age_b + gender + 
+      father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (treated_int | class_id),
+    data = dat_s,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15))
+
+
+hypothesis(fit_all_interaction_psych_threat, "treated_int > 0")
+hypothesis(fit_all_interaction_psych_threat, "treated_int:psych_threat < 0")
+
+# consider es = 0.01 as negligible
+rope(fit_all_interaction_psych_threat, ci = 0.95, 
+     range = c(-sd(dat_s$all_gpa_e, na.rm = T) * 0.01, 
+               sd(dat_s$all_gpa_e, na.rm = T) * 0.01))
+
+# using the empirical benchmark in Kraft (2020)
+sexit(fit_all_interaction_psych_threat, significant = 0.05 * sd(dat_s$all_gpa_e, na.rm = T), large = 0.2 * sd(dat_s$all_gpa_e, na.rm = T), ci = 0.95)[3,]
+
+
+interact_plot(model = fit_all_interaction_psych_threat, 
+              pred = "treated_int", 
+              modx = "psych_threat",
+              legend.main = "Psychological Threat",
+              pred.labels = c("Control", "Treatment"),
+              x.label = "\nTreatment Condition",
+              y.label = "Core Course GPA\n")
+```
+
+*Stereotype threat only*
+
+```{r}
+
+hist(dat_s$fscore_f2_b)
+
+fit_all_interaction_stereotype_threat <- brm(
+    all_gpa_e ~ all_gpa_b + treated_int * fscore_f2_b + gender + grade +
+      class_size + age_b + gender + 
+      father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (treated_int | class_id),
+    data = dat_s,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15))
+
+
+hypothesis(fit_all_interaction_stereotype_threat, "treated_int > 0")
+hypothesis(fit_all_interaction_stereotype_threat, "treated_int:fscore_f2_b < 0")
+
+# consider es = 0.01 as negligible
+rope(fit_all_interaction_stereotype_threat, ci = 0.95, 
+     range = c(-sd(dat_s$all_gpa_e, na.rm = T) * 0.01, 
+               sd(dat_s$all_gpa_e, na.rm = T) * 0.01))
+
+# using the empirical benchmark in Kraft (2020)
+sexit(fit_all_interaction_stereotype_threat, significant = 0.05 * sd(dat_s$all_gpa_e, na.rm = T), large = 0.2 * sd(dat_s$all_gpa_e, na.rm = T), ci = 0.95)[3,]
+
+
+interact_plot(model = fit_all_interaction_stereotype_threat, 
+              pred = "treated_int", 
+              modx = "fscore_f2_b",
+              legend.main = "Stereotype Threat",
+              pred.labels = c("Control", "Treatment"),
+              x.label = "\nTreatment Condition",
+              y.label = "Core Course GPA\n")
+```
+
+# Mediation models
+
+```{r}
+# Fit Bayesian mediation model in brms
+  fit_stereotype <- brm_multiple(
+    stereotype_e ~ stereotype_b + treated_int +
+      class_size + grade + gender + age_b + student_type + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int +
+      (treated_int | class_id),
+    data,
+    prior = my_prior_neg, 
+    chains = 4,
+    seed = 1234
+  )
+
+# Mediator model
+mediator_model <- bf(fscore_f2_e ~ fscore_f2_b + treated_int + class_size + grade + gender + age_b + student_type + father_edu_f + mother_edu_f + father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + (treated_int | class_id))
+
+# Outcome model with mediator (fscore_f2_e) included
+outcome_model <- bf(all_gpa_e ~ all_gpa_b + fscore_f2_e + treated_int + class_size + grade + gender + age_b + student_type + father_edu_f + mother_edu_f + father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + (treated_int | class_id))
+
+# Fit the Bayesian mediation model
+mediation_model <- brm(mediator_model + outcome_model + set_rescor(FALSE),
+                       data = dat_s, 
+                       prior = my_prior,
+                       chains = 4,
+                       seed = 1234)
+
+# not mediated through stereotype threat
+mediation(mediation_model, method = "HDI")
 ```
 
