@@ -35,17 +35,20 @@ conclusion_other_deaf_b ~~ conclusion_my_perform_b
   fit_cfa_f1_b <- lavaan::cfa(model_cfa_f1_b,
                               data = dat,
                               ordered = var_f1_b,
-                              cluster = "class_id")
+                              cluster = "class_id",
+                              missing="pairwise")
   
   fit_cfa_f2_b <- lavaan::cfa(model_cfa_f2_b,
                               data = dat,
                               ordered = var_f2_b,
-                              cluster = "class_id")
+                              cluster = "class_id",
+                              missing="pairwise")
   
   fit_cfa_f3_b <- lavaan::cfa(model_cfa_f3_b,
                               data = dat,
                               ordered = var_f3_b,
-                              cluster = "class_id")
+                              cluster = "class_id",
+                              missing="pairwise")
 
 # Endline CFA -----------------------------------------------------------------
 
@@ -78,17 +81,20 @@ conclusion_other_deaf_e ~~ conclusion_my_perform_e
   fit_cfa_f1_e <- lavaan::cfa(model_cfa_f1_e,
                               data = dat,
                               ordered = var_f1_e,
-                              cluster = "class_id")
+                              cluster = "class_id",
+                              missing="pairwise")
   
   fit_cfa_f2_e <- lavaan::cfa(model_cfa_f2_e,
                               data = dat,
                               ordered = var_f2_e,
-                              cluster = "class_id")
+                              cluster = "class_id",
+                              missing="pairwise")
 
   fit_cfa_f3_e <- lavaan::cfa(model_cfa_f3_e,
                               data = dat,
                               ordered = var_f3_e,
-                              cluster = "class_id")
+                              cluster = "class_id",
+                              missing="pairwise")
   
 
 # Create factor scores ----------------------------------------------------
