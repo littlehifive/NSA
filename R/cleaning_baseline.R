@@ -45,16 +45,16 @@ dat_ktm <- dat_ktm_b_raw |>
                                 father_edu == 7 ~ "Don't want to answer"
                                 )) |> # labels set to original text values
   mutate(father_edu_f = ifelse(father_edu %in% c("Do not know", "Don't want to answer"),
-                               NA_character_,
+                               "Non-response",
                                father_edu
   )) |> 
-  mutate(father_edu_f = factor(father_edu_f, 
-                               levels = c("Do not go to school",
-                                          "Basic education (Class 1 to 8)",
-                                          "Secondary education (Class 9 to 12)",
-                                          "Some college education",
-                                          "Bachelor and above"
-                               ))) |> 
+  # mutate(father_edu_f = factor(father_edu_f, 
+  #                              levels = c("Do not go to school",
+  #                                         "Basic education (Class 1 to 8)",
+  #                                         "Secondary education (Class 9 to 12)",
+  #                                         "Some college education",
+  #                                         "Bachelor and above"
+  #                              ))) |> 
   mutate(mother_edu = case_when(mother_edu == 1 ~ "Do not go to school",
                                 mother_edu == 2 ~ "Basic education (Class 1 to 8)",
                                 mother_edu == 3 ~ "Secondary education (Class 9 to 12)",
@@ -64,17 +64,17 @@ dat_ktm <- dat_ktm_b_raw |>
                                 mother_edu == 7 ~ "Don't want to answer"
   )) |> # labels set to original text values
   mutate(mother_edu_f = ifelse(mother_edu %in% c("Do not know", "Don't want to answer"),
-                               NA_character_,
+                               "Non-response",
                                mother_edu
   )) |> 
-  mutate(mother_edu_f = factor(mother_edu_f, 
-                               levels = c("Do not go to school",
-                                          "Basic education (Class 1 to 8)",
-                                          "Secondary education (Class 9 to 12)",
-                                          "Some college education",
-                                          "Bachelor and above",
-                                          TRUE ~ NA_character_
-                               ))) |> 
+  # mutate(mother_edu_f = factor(mother_edu_f, 
+  #                              levels = c("Do not go to school",
+  #                                         "Basic education (Class 1 to 8)",
+  #                                         "Secondary education (Class 9 to 12)",
+  #                                         "Some college education",
+  #                                         "Bachelor and above",
+  #                                         TRUE ~ NA_character_
+  #                              ))) |> 
   mutate(father_occ = case_when(father_occ == 1 ~ "Self-employment (agriculture)",
                                 father_occ == 2 ~ "Self-employment (non-agriculture/business)",
                                 father_occ == 3 ~ "Agricultural-based labor",
@@ -88,7 +88,7 @@ dat_ktm <- dat_ktm_b_raw |>
                                 father_occ == 11 ~ "Do not know",
                                 )) |> # labels set to original text values
   mutate(father_occ_f = case_when(
-    father_occ %in% c("Do not know", "Do not want to mention") ~ NA_character_,
+    father_occ %in% c("Do not know", "Do not want to mention") ~ "Non-response",
     father_occ == "Others (please mention)" ~ father_occ_other,
     TRUE ~ father_occ
   )) |> 
@@ -111,7 +111,7 @@ dat_ktm <- dat_ktm_b_raw |>
                                 mother_occ == 11 ~ "Do not know",
   )) |> # labels set to original text values
   mutate(mother_occ_f = case_when(
-    mother_occ %in% c("Do not know", "Do not want to mention") ~ NA_character_,
+    mother_occ %in% c("Do not know", "Do not want to mention") ~ "Non-response",
     mother_occ == "Others (please mention)" ~ mother_occ_other,
     TRUE ~ mother_occ
   )) |> 
@@ -229,16 +229,16 @@ dat_pokhara <- dat_pokhara_b_raw |>
                                 father_edu == 7 ~ "Don't want to answer"
   )) |> # labels set to original text values
   mutate(father_edu_f = ifelse(father_edu %in% c("Do not know", "Don't want to answer"),
-                               NA_character_,
+                               "Non-response",
                                father_edu
   )) |> 
-  mutate(father_edu_f = factor(father_edu_f, 
-                               levels = c("Do not go to school",
-                                          "Basic education (Class 1 to 8)",
-                                          "Secondary education (Class 9 to 12)",
-                                          "Some college education",
-                                          "Bachelor and above"
-                               ))) |> 
+  # mutate(father_edu_f = factor(father_edu_f, 
+  #                              levels = c("Do not go to school",
+  #                                         "Basic education (Class 1 to 8)",
+  #                                         "Secondary education (Class 9 to 12)",
+  #                                         "Some college education",
+  #                                         "Bachelor and above"
+  #                              ))) |> 
   mutate(mother_edu = case_when(mother_edu == 1 ~ "Do not go to school",
                                 mother_edu == 2 ~ "Basic education (Class 1 to 8)",
                                 mother_edu == 3 ~ "Secondary education (Class 9 to 12)",
@@ -248,17 +248,17 @@ dat_pokhara <- dat_pokhara_b_raw |>
                                 mother_edu == 7 ~ "Don't want to answer"
   )) |> # labels set to original text values
   mutate(mother_edu_f = ifelse(mother_edu %in% c("Do not know", "Don't want to answer"),
-                               NA_character_,
+                               "Non-response",
                                mother_edu
   )) |> 
-  mutate(mother_edu_f = factor(mother_edu_f, 
-                               levels = c("Do not go to school",
-                                          "Basic education (Class 1 to 8)",
-                                          "Secondary education (Class 9 to 12)",
-                                          "Some college education",
-                                          "Bachelor and above",
-                                          TRUE ~ NA_character_
-                               ))) |> 
+  # mutate(mother_edu_f = factor(mother_edu_f, 
+  #                              levels = c("Do not go to school",
+  #                                         "Basic education (Class 1 to 8)",
+  #                                         "Secondary education (Class 9 to 12)",
+  #                                         "Some college education",
+  #                                         "Bachelor and above",
+  #                                         TRUE ~ NA_character_
+  #                              ))) |> 
   mutate(father_occ = case_when(father_occ == 1 ~ "Self-employment (agriculture)",
                                 father_occ == 2 ~ "Self-employment (non-agriculture/business)",
                                 father_occ == 3 ~ "Agricultural-based labor",
@@ -272,7 +272,7 @@ dat_pokhara <- dat_pokhara_b_raw |>
                                 father_occ == 11 ~ "Do not know",
   )) |> # labels set to original text values
   mutate(father_occ_f = case_when(
-    father_occ %in% c("Do not know", "Do not want to mention") ~ NA_character_,
+    father_occ %in% c("Do not know", "Do not want to mention") ~ "Non-response",
     father_occ == "Others (please mention)" ~ father_occ_other,
     TRUE ~ father_occ
   )) |> 
@@ -296,7 +296,7 @@ dat_pokhara <- dat_pokhara_b_raw |>
                                 mother_occ == 11 ~ "Do not know",
   )) |> 
   mutate(mother_occ_f = case_when(
-    mother_occ %in% c("Do not know", "Do not want to mention") ~ NA_character_,
+    mother_occ %in% c("Do not know", "Do not want to mention") ~ "Non-response",
     mother_occ == "Others (please mention)" ~ mother_occ_other,
     TRUE ~ mother_occ
   )) |> 
@@ -440,16 +440,16 @@ dat_baglung <- dat_baglung_b_raw |>
                                 father_edu == 7 ~ "Don't want to answer"
   )) |> # labels set to original text values
   mutate(father_edu_f = ifelse(father_edu %in% c("Do not know", "Don't want to answer"),
-                               NA_character_,
+                               "Non-response",
                                father_edu
                                )) |> 
-  mutate(father_edu_f = factor(father_edu_f, 
-                               levels = c("Do not go to school",
-                                          "Basic education (Class 1 to 8)",
-                                          "Secondary education (Class 9 to 12)",
-                                          "Some college education",
-                                          "Bachelor and above"
-                                          ))) |> 
+  # mutate(father_edu_f = factor(father_edu_f, 
+  #                              levels = c("Do not go to school",
+  #                                         "Basic education (Class 1 to 8)",
+  #                                         "Secondary education (Class 9 to 12)",
+  #                                         "Some college education",
+  #                                         "Bachelor and above"
+  #                                         ))) |> 
   mutate(mother_edu = case_when(mother_edu == 1 ~ "Do not go to school",
                                 mother_edu == 2 ~ "Basic education (Class 1 to 8)",
                                 mother_edu == 3 ~ "Secondary education (Class 9 to 12)",
@@ -459,17 +459,17 @@ dat_baglung <- dat_baglung_b_raw |>
                                 mother_edu == 7 ~ "Don't want to answer"
   )) |> # labels set to original text values
   mutate(mother_edu_f = ifelse(mother_edu %in% c("Do not know", "Don't want to answer"),
-                               NA_character_,
+                               "Non-response",
                                mother_edu
   )) |> 
-  mutate(mother_edu_f = factor(mother_edu_f, 
-                               levels = c("Do not go to school",
-                                          "Basic education (Class 1 to 8)",
-                                          "Secondary education (Class 9 to 12)",
-                                          "Some college education",
-                                          "Bachelor and above",
-                                          TRUE ~ NA_character_
-                               ))) |> 
+  # mutate(mother_edu_f = factor(mother_edu_f, 
+  #                              levels = c("Do not go to school",
+  #                                         "Basic education (Class 1 to 8)",
+  #                                         "Secondary education (Class 9 to 12)",
+  #                                         "Some college education",
+  #                                         "Bachelor and above",
+  #                                         TRUE ~ NA_character_
+  #                              ))) |> 
   mutate(father_occ = case_when(father_occ == 1 ~ "Self-employment (agriculture)",
                                 father_occ == 2 ~ "Self-employment (non-agriculture/business)",
                                 father_occ == 3 ~ "Agricultural-based labor",
@@ -483,7 +483,7 @@ dat_baglung <- dat_baglung_b_raw |>
                                 father_occ == 11 ~ "Do not know",
   )) |> # labels set to original text values
   mutate(father_occ_f = case_when(
-    father_occ %in% c("Do not know", "Do not want to mention") ~ NA_character_,
+    father_occ %in% c("Do not know", "Do not want to mention") ~ "Non-response",
     father_occ == "Others (please mention)" ~ father_occ_other,
     TRUE ~ father_occ
   )) |> 
@@ -507,7 +507,7 @@ dat_baglung <- dat_baglung_b_raw |>
                                 mother_occ == 11 ~ "Do not know",
   )) |> 
   mutate(mother_occ_f = case_when(
-    mother_occ %in% c("Do not know", "Do not want to mention") ~ NA_character_,
+    mother_occ %in% c("Do not know", "Do not want to mention") ~ "Non-response",
     mother_occ == "Others (please mention)" ~ mother_occ_other,
     TRUE ~ mother_occ
   )) |> 
