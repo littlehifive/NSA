@@ -265,8 +265,8 @@ reverse_code_dat <- function(dat_all_cleaned){
 combine_code_dat <- function(dat_all_cleaned_reverse_coded){
   
   dat_all_cleaned_combine_coded <- dat_all_cleaned_reverse_coded |> 
-    mutate_at(vars(capable_person_b:pressure_parent_teacher_b,
-                   capable_person_e:pressure_parent_teacher_e),
+    mutate_at(vars(capable_person_b:conclusion_abt_me_b,
+                   capable_person_e:conclusion_abt_me_e),
               function(x){recode(x, `1` = 1, `2` = 1, `3` = 2, `4` = 3, `5` = 3)}
     )
   
