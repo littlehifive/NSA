@@ -1,3 +1,27 @@
+# correlation matrix with significance stars
+corstarsl <- function(x){ 
+  x <- as.matrix(x) 
+  R <- Hmisc::rcorr(x)$r 
+  p <- Hmisc::rcorr(x)$P 
+  ## define notions for significance levels; spacing is important.
+  mystars <- ifelse(p < .001, "***", ifelse(p < .01, "**", ifelse(p < .05, "*", "")))
+  ## trunctuate the matrix that holds the correlations to two decimal
+  R <- format(round(cbind(rep(-1.11, ncol(x)), R), 3))[,-1] 
+  ## build a new matrix that includes the correlations with their apropriate stars 
+  Rnew <- matrix(paste(R, mystars, sep=""), ncol=ncol(x)) 
+  diag(Rnew) <- paste(diag(R), " ", sep="") 
+  rownames(Rnew) <- colnames(x) 
+  colnames(Rnew) <- paste(colnames(x), "", sep="") 
+  ## remove upper triangle
+  Rnew <- as.matrix(Rnew)
+  Rnew[upper.tri(Rnew, diag = TRUE)] <- "--"
+  Rnew[upper.tri(Rnew)] <- ""
+  Rnew <- as.data.frame(Rnew) 
+  ## remove last column and return the matrix (which is now a data frame)
+  Rnew <- cbind(Rnew[1:length(Rnew)])
+  return(Rnew) 
+}
+
 # clean spaces in text responses
 clean_space <- function(data, var){
   data[,var] <- gsub("\\r", "", data[, var])
@@ -484,4 +508,102 @@ get.model.results.primary <- function(data = dat_s,
   )
   
   return(list(fit_nepali, fit_english, fit_math, fit_science, fit_all))
+}
+
+# Create main impact tables
+
+create_main_tab <- function(fit, par){
+  # par <- point_estimate(fit_gpa)$Parameter
+  
+  tab <- describe_posterior(
+    fit,
+    effects = "all",
+    component = "all",
+    test = c("p_direction", "p_significance"),
+    centrality = "all",
+    ci = 0.89,
+    ci_method = "hdi"
+  ) |> as_tibble()
+  
+  tab <- tab |> 
+    filter(!grepl("^r_class_id", Parameter)) |> 
+    mutate_if(is.numeric, function(x){round(x, digits = 3)}) |> 
+    mutate(CI = paste0("[", sprintf("%.3f", CI_low), ", ", sprintf("%.3f", CI_high), "]")) |> 
+    mutate(ESS = round(ESS, 0)) |> 
+    mutate(Parameter = par) |> 
+    select(-c(Effects, Component, ps, CI_low, CI_high, Mean, MAP)) 
+  
+  tab <- tab[c(1:3, 27, 5:26, 4, 28:29, 30:33), ]
+  
+  return(tab)
+}
+
+# Create secondary impact tables
+
+create_secondary_tab <- function(fit, par){
+  # par <- point_estimate(fit_f1)$Parameter
+  
+  tab <- describe_posterior(
+    fit,
+    effects = "all",
+    component = "all",
+    test = c("p_direction", "p_significance"),
+    centrality = "all",
+    ci = 0.89,
+    ci_method = "hdi"
+  ) |> as_tibble()
+  
+  tab <- tab |> 
+    filter(!grepl("^r_class_id", Parameter)) |> 
+    mutate_if(is.numeric, function(x){round(x, digits = 3)}) |> 
+    mutate(CI = paste0("[", sprintf("%.3f", CI_low), ", ", sprintf("%.3f", CI_high), "]")) |> 
+    mutate(ESS = round(ESS, 0)) |> 
+    mutate(Parameter = par) |> 
+    select(-c(Effects, Component, ps, CI_low, CI_high, Mean, MAP)) 
+  
+  tab <- tab[c(1:2, 30, 3, 27, 5:26, 4, 28:29, 31:34), ]
+  
+  return(tab)
+}
+
+# Create moderation effect tables
+
+create_mod_tab <- function(fit, par){
+  # par <- point_estimate(fit_gpa_x_low_performance)$Parameter
+  
+  tab <- describe_posterior(
+    fit,
+    effects = "all",
+    component = "all",
+    test = c("p_direction", "p_significance"),
+    centrality = "all",
+    ci = 0.89,
+    ci_method = "hdi"
+  ) |> as_tibble()
+  
+  tab <- tab |> 
+    filter(!grepl("^r_class_id", Parameter)) |> 
+    mutate_if(is.numeric, function(x){round(x, digits = 3)}) |> 
+    mutate(CI = paste0("[", sprintf("%.3f", CI_low), ", ", sprintf("%.3f", CI_high), "]")) |> 
+    mutate(ESS = round(ESS, 0)) |> 
+    mutate(Parameter = par) |> 
+    select(-c(Effects, Component, ps, CI_low, CI_high, Mean, MAP)) 
+  
+  tab <- tab[c(1:4, 31, 28, 6:27, 5, 28:29, 32:35), ]
+  
+  return(tab)
+}
+
+# get useful model fits from lavaan models
+get_sem_fit <- function(fit,
+                        indices = c("cfi", "tli", "rmsea", "srmr")){
+  
+  all_fit <- fitMeasures(fit)
+  return(all_fit[indices] |> round(3))
+  
+}
+
+# get omega from lavaan models
+get_omega <- function(fit){
+  return(semTools::compRelSEM(fit))
 }
