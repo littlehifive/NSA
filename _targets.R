@@ -156,6 +156,14 @@ list(
       )
     ),
   
+  # 1.5 load cleaned value essay responses
+  tar_target(
+    int_text,
+    openxlsx::read.xlsx(
+      file.path(path, "Checks/int_text_manually_cleaned.xlsx"), sheet = 1
+      )
+  ),
+  
   # 2.1 clean data - baseline
   ## survey data
   tar_target(
@@ -249,7 +257,7 @@ list(
   # 3.1 merge data - all waves
   tar_target(
     dat_all_cleaned,
-    merge_dat(dat_b_cleaned, dat_e_cleaned, dat_int_cleaned)
+    merge_dat(dat_b_cleaned, dat_e_cleaned, dat_int_cleaned, int_text)
   ),
   
   # 3.2 cleaned data with reverse code certain items - all waves
