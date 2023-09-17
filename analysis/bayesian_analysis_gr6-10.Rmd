@@ -22,6 +22,7 @@ library(broom.mixed)
 library(lme4)
 library(bayesplot)
 library(interactions)
+library(rstanarm)
 
 source("R/functions.R")
 
@@ -135,7 +136,7 @@ mice::md.pattern(test, rotate.names = T)
 
 # Load cleaned data files
 ```{r}
-#load("/Users/michaelfive/Library/CloudStorage/GoogleDrive-wuzezhen33@gmail.com/My Drive/Nepal SA Study/Analysis/model/gr6-10_survey_gpa_0730.RData")
+#load("/Users/michaelfive/Library/CloudStorage/GoogleDrive-wuzezhen33@gmail.com/My Drive/Nepal SA Study/Analysis/model/gr6-10_survey_gpa_0820.RData")
 ```
 
 # Descriptive statistics
@@ -234,6 +235,9 @@ dat_s |> group_by(sch_id) |> reframe(
 
 sd(dat_s$all_gpa_b, na.rm = T)
 sd(dat_s$all_gpa_e, na.rm = T)
+mean(dat_s$fscore_f1_b, na.rm = T)
+mean(dat_s$fscore_f2_b, na.rm = T)
+mean(dat_s$fscore_f3_b, na.rm = T)
 mean(dat_s$fscore_f1_e, na.rm = T)
 mean(dat_s$fscore_f2_e, na.rm = T)
 mean(dat_s$fscore_f3_e, na.rm = T)
@@ -270,15 +274,15 @@ df <- df |>
          #   sch_id == 3 ~ "Pokhara")
          )  |> 
   mutate(class_id = case_when(
-           class_id %in% c(1:5) ~ paste0("Baglung Grade ", class_id + 5),
-           class_id %in% c(8:12) ~ paste0("Kathmandu Grade ", class_id - 2),
-           class_id %in% c(15:19) ~ paste0("Pokhara Grade ", class_id - 9)
+           class_id %in% c(1:5) ~ paste0("School A Grade ", class_id + 5),
+           class_id %in% c(8:12) ~ paste0("School B Grade ", class_id - 2),
+           class_id %in% c(15:19) ~ paste0("School C Grade ", class_id - 9)
          )) |> 
   mutate(class_id = factor(class_id,
                            levels = c(
-                             paste0("Baglung Grade ", 6:10),
-                             paste0("Kathmandu Grade ", 6:10),
-                             paste0("Pokhara Grade ", 6:10)
+                             paste0("School A Grade ", 6:10),
+                             paste0("School B Grade ", 6:10),
+                             paste0("School C Grade ", 6:10)
                            ))) |> 
   rename(Condition = treated_int)
 
@@ -324,6 +328,15 @@ colnames(cor_df) <- as.character(c(1:8))
 write.csv(cor_df, "analysis/tables/tab_cor.csv")
 ```
 
+# Differential Attrition
+
+```{r}
+temp <- dat_s |> mutate(has_gpa_e = !is.na(all_gpa_e))
+
+mod_attr <- stan_glm(has_gpa_e ~ treated_int * (age_b + gender), data = temp, family = "binomial", seed = 1234)
+
+summary(mod_attr, digits = 3)
+```
 
 # Analysis
 
@@ -704,6 +717,7 @@ dat_s <- dat_s |>
 ```
 
 ```{r}
+# using baseline performance (dichotomous) as the moderator
 fit_gpa_x_low_performance <- brm(
     all_gpa_e ~ all_gpa_b + treated_int * low_performing +
       class_size + grade + gender + age_b + student_type +
@@ -727,6 +741,31 @@ sexit(fit_gpa_x_low_performance)
 
 # no interaction effect for low-performance because performance was already low for most students
 ```
+
+```{r}
+# using baseline performance (continuous) as the moderator
+fit_gpa_x_low_performance_cont <- brm(
+    all_gpa_e ~ all_gpa_b + treated_int * all_gpa_b +
+      class_size + grade + gender + age_b + student_type +
+      father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (treated_int | class_id),
+    data = dat_s,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+hypothesis(fit_gpa_x_low_performance_cont, "treated_int > 0")
+
+hypothesis(fit_gpa_x_low_performance_cont, "all_gpa_b:treated_int < 0")
+
+hdi(fit_gpa_x_low_performance_cont, ci = 0.89)
+sexit(fit_gpa_x_low_performance_cont)
+```
+
 
 ## Moderation effect (psychological threat)
 
@@ -970,15 +1009,15 @@ df <- df |>
          #   sch_id == 3 ~ "Pokhara")
          )  |> 
   mutate(class_id = case_when(
-           class_id %in% c(1:5) ~ paste0("Baglung Grade ", class_id + 5),
-           class_id %in% c(8:12) ~ paste0("Kathmandu Grade ", class_id - 2),
-           class_id %in% c(15:19) ~ paste0("Pokhara Grade ", class_id - 9)
+           class_id %in% c(1:5) ~ paste0("School A Grade ", class_id + 5),
+           class_id %in% c(8:12) ~ paste0("School B Grade ", class_id - 2),
+           class_id %in% c(15:19) ~ paste0("School C Grade ", class_id - 9)
          )) |> 
   mutate(class_id = factor(class_id,
                            levels = c(
-                             paste0("Baglung Grade ", 6:10),
-                             paste0("Kathmandu Grade ", 6:10),
-                             paste0("Pokhara Grade ", 6:10)
+                             paste0("School A Grade ", 6:10),
+                             paste0("School B Grade ", 6:10),
+                             paste0("School C Grade ", 6:10)
                            ))) |> 
   rename(Condition = treated_int)
 
