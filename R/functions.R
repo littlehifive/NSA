@@ -589,9 +589,13 @@ create_mod_tab <- function(fit, par){
     mutate(Parameter = par) |> 
     select(-c(Effects, Component, ps, CI_low, CI_high, Mean, MAP)) 
   
-  tab <- tab[c(1:4, 31, 28, 6:27, 5, 28:29, 32:35), ]
+  tab_s <- if(length(tab$Parameter) == 35){
+    tab[c(1:4, 31, 28, 6:27, 5, 28:29, 32:35), ]
+  } else{
+    tab[c(1:3, 30, 27, 5:26, 4, 28:29, 31:34), ]
+  }
   
-  return(tab)
+  return(tab_s)
 }
 
 # get useful model fits from lavaan models
