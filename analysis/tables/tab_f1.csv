@@ -1,0 +1,35 @@
+Parameter,Median,CI,pd,Rhat,ESS
+Intercept,-1.068,"[-2.719, 0.587]",0.849,1,3150
+Baseline self-efficacy and sense of belonging in school,-0.023,"[-0.135, 0.098]",0.617,1.001,4945
+Baseline GPA,0.174,"[-0.155, 0.549]",0.783,1,2632
+Treatment (Affirmed vs. Control),0.157,"[-0.090, 0.415]",0.846,1.001,4093
+Duration of the Values Affirmation Session (in minutes),0.063,"[0.021, 0.106]",0.989,0.999,4665
+Grade 7 (vs. Grade 6),-0.051,"[-0.439, 0.356]",0.58,1,2301
+Grade 8 (vs. Grade 6),-0.028,"[-0.462, 0.401]",0.544,1,2173
+Grade 9 (vs. Grade 6),0.164,"[-0.280, 0.617]",0.723,1,1945
+Grade 10 (vs. Grade 6),-0.032,"[-0.517, 0.463]",0.54,1.002,1810
+Gender (Male vs. Female),-0.269,"[-0.519, -0.048]",0.966,1,4707
+Age,-0.008,"[-0.076, 0.062]",0.571,1.001,2387
+Disability Status (Hearing vs. Deaf),-0.439,"[-1.028, 0.096]",0.888,1,3750
+Father Education (Basic education (Class 1 to 8) vs. Bachelor and above),-0.1,"[-0.609, 0.419]",0.622,1.002,1744
+Father Education (Do not go to school vs. Bachelor and above),0.015,"[-0.578, 0.620]",0.517,1.002,1650
+Father Education (Non-response vs. Bachelor and above),-0.013,"[-0.611, 0.526]",0.515,1.003,1792
+Father Education (Secondary education (Class 9 to 12) vs. Bachelor and above),0.157,"[-0.329, 0.653]",0.71,1.003,1645
+Father Education (Some college education vs. Bachelor and above),-0.351,"[-1.268, 0.681]",0.721,1,4417
+Mother Education (Do not go to school vs. Bachelor and above),0.075,"[-0.231, 0.373]",0.65,1.001,3449
+Mother Education (Non-response vs. Bachelor and above),-0.019,"[-0.390, 0.326]",0.531,1,4945
+Mother Education (Secondary education (Class 9 to 12) vs. Bachelor and above),0.257,"[-0.036, 0.565]",0.909,1.001,3959
+Mother Education (Some college education vs. Bachelor and above),0.218,"[-0.899, 1.394]",0.618,1,5152
+Father Occupation (Non-salary job vs. No job),-0.15,"[-0.444, 0.114]",0.804,1,4126
+Father Occupation (Salary job vs. No job),-0.134,"[-0.416, 0.147]",0.769,1,3575
+Mother Occupation (Non-salary job vs. No job),0.107,"[-0.167, 0.384]",0.735,1,4500
+Mother Occupation (Salary job vs. No job),0.283,"[-0.084, 0.622]",0.904,1,5054
+Number of Adult Members in Household,0.058,"[-0.013, 0.135]",0.891,1,3955
+Number of Siblings,-0.073,"[-0.171, 0.019]",0.885,1,3634
+Class Size,0.012,"[-0.023, 0.052]",0.678,0.999,3133
+Kathmandu School (vs. Baglung School),-0.429,"[-0.946, 0.072]",0.908,1.001,2451
+Pokhara School (vs. Baglung School),-0.179,"[-0.620, 0.256]",0.744,1.001,2610
+SD_Class_Intercept,0.097,"[0.000, 0.252]",1,1.002,1975
+SD_Class_Treatment,0.179,"[0.000, 0.421]",1,1.003,1423
+Cor_Class_Intercept_Treatment,-0.299,"[-1.000, 0.648]",0.638,1,1988
+Residual SD,0.97,"[0.888, 1.047]",1,1,4353

@@ -1,0 +1,36 @@
+Parameter,Median,CI,pd,Rhat,ESS
+Intercept,1.408,"[0.621, 2.169]",0.997,1,2169
+Baseline GPA,0.599,"[0.540, 0.662]",1,0.999,6066
+Treatment (Affirmed vs. Control),0.04,"[-0.002, 0.079]",0.942,1,3989
+Stereotype Threat,0.006,"[-0.017, 0.034]",0.648,1,4335
+Treatment X Stereotype Threat,-0.026,"[-0.062, 0.008]",0.881,1,4146
+Duration of the Values Affirmation Session (in minutes),0.008,"[0.002, 0.015]",0.972,1,7926
+Grade 7 (vs. Grade 6),0.179,"[-0.209, 0.571]",0.776,1.002,1762
+Grade 8 (vs. Grade 6),0.416,"[-0.010, 0.798]",0.941,1.002,1886
+Grade 9 (vs. Grade 6),0.094,"[-0.314, 0.490]",0.664,1.001,1680
+Grade 10 (vs. Grade 6),0.071,"[-0.350, 0.492]",0.613,1.001,1982
+Gender (Male vs. Female),-0.025,"[-0.060, 0.012]",0.872,1,6240
+Age,-0.002,"[-0.014, 0.008]",0.635,1.001,5326
+Disability Status (Hearing vs. Deaf),0.172,"[0.047, 0.294]",0.986,1,6436
+Father Education (Basic education (Class 1 to 8) vs. Bachelor and above),-0.217,"[-0.313, -0.117]",0.999,1.002,1736
+Father Education (Do not go to school vs. Bachelor and above),-0.163,"[-0.272, -0.044]",0.987,1.002,1877
+Father Education (Non-response vs. Bachelor and above),-0.237,"[-0.352, -0.136]",1,1.002,1682
+Father Education (Secondary education (Class 9 to 12) vs. Bachelor and above),-0.147,"[-0.243, -0.051]",0.992,1.002,1753
+Father Education (Some college education vs. Bachelor and above),-0.43,"[-0.649, -0.230]",1,1,4181
+Mother Education (Do not go to school vs. Bachelor and above),0.048,"[-0.003, 0.100]",0.935,1,5366
+Mother Education (Non-response vs. Bachelor and above),0.086,"[0.025, 0.142]",0.992,0.999,4932
+Mother Education (Secondary education (Class 9 to 12) vs. Bachelor and above),0.005,"[-0.043, 0.053]",0.563,1,5134
+Mother Education (Some college education vs. Bachelor and above),-0.145,"[-0.418, 0.134]",0.797,1,4236
+Father Occupation (Non-salary job vs. No job),-0.016,"[-0.062, 0.031]",0.703,1,4866
+Father Occupation (Salary job vs. No job),-0.013,"[-0.058, 0.034]",0.684,1,4142
+Mother Occupation (Non-salary job vs. No job),-0.051,"[-0.094, -0.011]",0.975,0.999,6731
+Mother Occupation (Salary job vs. No job),0.032,"[-0.027, 0.089]",0.818,1,6105
+Number of Adult Members in Household,0.002,"[-0.009, 0.016]",0.623,1,4978
+Number of Siblings,-0.008,"[-0.022, 0.009]",0.8,1,4542
+Class Size,-0.005,"[-0.043, 0.029]",0.6,1.001,1688
+Duration of the Values Affirmation Session (in minutes),0.008,"[0.002, 0.015]",0.972,1,7926
+Kathmandu School (vs. Baglung School),-0.329,"[-0.712, -0.001]",0.929,1.003,1707
+SD_Class_Intercept,0.286,"[0.168, 0.460]",1,1.002,1145
+SD_Class_Treatment,0.033,"[0.000, 0.077]",1,1.001,1755
+Cor_Class_Intercept_Treatment,0.019,"[-0.788, 0.927]",0.511,1,3009
+Residual SD,0.155,"[0.144, 0.168]",1,1,5131
