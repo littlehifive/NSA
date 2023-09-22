@@ -57,6 +57,7 @@ dat_s <- dat_s |> select(
   mother_edu_f, father_occ_salary, mother_occ_salary, adult_members,
   siblings, treated_int, duration_int, 
   int_q1_value_1_int, int_q1_value_2_int, int_q1_value_3_int,
+  ind_count_int, inter_count_int, total_count_int,
   mc_survey_1_int:mc_survey_4_int,
   nepali_scores_b:science_grades_b,
   nepali_scores_e:science_grades_e,
@@ -136,7 +137,7 @@ mice::md.pattern(test, rotate.names = T)
 
 # Load cleaned data files
 ```{r}
-#load("/Users/michaelfive/Library/CloudStorage/GoogleDrive-wuzezhen33@gmail.com/My Drive/Nepal SA Study/Analysis/model/gr6-10_survey_gpa_0820.RData")
+#load("/Users/michaelfive/Library/CloudStorage/GoogleDrive-wuzezhen33@gmail.com/My Drive/Nepal SA Study/Analysis/model/gr6-10_survey_gpa_0917.RData")
 ```
 
 # Descriptive statistics
@@ -950,6 +951,7 @@ hdi(fit_gpa_x_stereotype_threat_low, ci = 0.89)
 
 ## Mediation Model
 
+*Stereotype threat as a mediator*
 ```{r}
 # Mediator model
 mediator_model <- bf(fscore_f2_e ~ fscore_f2_b + treated_int + class_size + grade + gender + age_b + student_type + father_edu_f + mother_edu_f + father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + (treated_int | class_id))
@@ -965,6 +967,44 @@ mediation_model <- brm(mediator_model + outcome_model + set_rescor(FALSE),
                        seed = 1234)
 
 # not mediated through stereotype threat
+mediation(mediation_model, method = "HDI")
+```
+
+*Interdependent word count as a mediator*
+```{r}
+# Mediator model
+mediator_model <- bf(inter_count_int ~ ind_count_int + total_count_int + treated_int + class_size + grade + gender + age_b + student_type + father_edu_f + mother_edu_f + father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + (treated_int | class_id))
+
+# Outcome model with mediator (inter_count_int) included
+outcome_model <- bf(all_gpa_e ~ all_gpa_b + inter_count_int + treated_int + class_size + grade + gender + age_b + student_type + father_edu_f + mother_edu_f + father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + (treated_int | class_id))
+
+# Fit the Bayesian mediation model
+mediation_model <- brm(mediator_model + outcome_model + set_rescor(FALSE),
+                       data = dat_s, 
+                       prior = my_prior,
+                       chains = 4,
+                       seed = 1234)
+
+# not mediated through Interdependent word count
+mediation(mediation_model, method = "HDI")
+```
+
+*Independent word count as a mediator*
+```{r}
+# Mediator model
+mediator_model <- bf(ind_count_int ~ inter_count_int + total_count_int + treated_int + class_size + grade + gender + age_b + student_type + father_edu_f + mother_edu_f + father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + (treated_int | class_id))
+
+# Outcome model with mediator (ind_count_int) included
+outcome_model <- bf(all_gpa_e ~ all_gpa_b + ind_count_int + treated_int + class_size + grade + gender + age_b + student_type + father_edu_f + mother_edu_f + father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + (treated_int | class_id))
+
+# Fit the Bayesian mediation model
+mediation_model <- brm(mediator_model + outcome_model + set_rescor(FALSE),
+                       data = dat_s, 
+                       prior = my_prior,
+                       chains = 4,
+                       seed = 1234)
+
+# not mediated through Independent word count
 mediation(mediation_model, method = "HDI")
 ```
 
@@ -1044,5 +1084,95 @@ ggplot(data = df,
 
 ```
 
+## Subgroup Analysis (effect of independence/interdependence)
 
+```{r}
+dat_treated <- dat_s |> filter(treated_int == 1)
+```
+
+```{r}
+fit_gpa_treated <- brm(
+    all_gpa_e ~ all_gpa_b + treated_int + ind_count_int + inter_count_int + total_count_int +
+      class_size + grade + gender + age_b + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (1 | class_id),
+    dat_treated,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+hypothesis(fit_gpa_treated, "ind_count_int > 0")
+hypothesis(fit_gpa_treated, "inter_count_int > 0")
+hypothesis(fit_gpa_treated, "total_count_int > 0") #
+hypothesis(fit_gpa_treated, "duration_int > 0") #
+
+corstarsl(dat_s |> select(ind_count_int, inter_count_int, total_count_int, duration_int))
+
+```
+
+```{r}
+fit_f1_treated <- brm(
+    fscore_f1_e ~ fscore_f1_b + ind_count_int * inter_count_int + total_count_int +
+      class_size + grade + gender + age_b + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (1 | class_id),
+    dat_treated,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+hypothesis(fit_f1_treated, "ind_count_int > 0")
+hypothesis(fit_f1_treated, "inter_count_int > 0")
+hypothesis(fit_f1_treated, "total_count_int > 0")
+hypothesis(fit_f1_treated, "duration_int > 0") #
+
+```
+
+```{r}
+fit_f2_treated <- brm(
+    fscore_f2_e ~ fscore_f2_b + ind_count_int + inter_count_int + total_count_int +
+      class_size + grade + gender + age_b + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (1 | class_id),
+    dat_treated,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+hypothesis(fit_f2_treated, "ind_count_int < 0")
+hypothesis(fit_f2_treated, "inter_count_int > 0") # increased stereotype threat
+hypothesis(fit_f2_treated, "total_count_int < 0") #
+hypothesis(fit_f2_treated, "duration_int < 0") #
+
+```
+
+```{r}
+fit_f3_treated <- brm(
+    fscore_f3_e ~ fscore_f3_b + ind_count_int * inter_count_int + total_count_int +
+      class_size + grade + gender + age_b + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (1 | class_id),
+    dat_treated,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+hypothesis(fit_f3_treated, "ind_count_int < 0") #
+hypothesis(fit_f3_treated, "inter_count_int < 0") #
+hypothesis(fit_f3_treated, "total_count_int < 0")
+hypothesis(fit_f3_treated, "duration_int < 0")
+
+```
 

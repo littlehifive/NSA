@@ -74,24 +74,29 @@ ggplot(values_combined) +
 ```{r}
 # prepare text data
 
+# text_treat_full <- dat_treat |> 
+#   mutate(text = ifelse(is.na(int_q3_int),
+#                         int_q2_int,
+#                         paste(int_q2_int, int_q3_int))
+#          )
+  
 text_treat_full <- dat_treat |> 
-  mutate(text = ifelse(is.na(int_q3_int),
-                        int_q2_int,
-                        paste(int_q2_int, int_q3_int))
-         )
-  
-text_treat_full <- text_treat_full |> 
-  select(st_id, text)
+  select(st_id, essay_int) |> 
+  rename(text = essay_int)
 
+# text_control_full <- dat_control |> 
+#   mutate(text = ifelse(is.na(int_q3_int),
+#                         int_q2_int,
+#                         paste(int_q2_int, int_q3_int))
+#          )
+#   
 text_control_full <- dat_control |> 
-  mutate(text = ifelse(is.na(int_q3_int),
-                        int_q2_int,
-                        paste(int_q2_int, int_q3_int))
-         )
-  
-text_control_full <- text_control_full |> 
-  select(st_id, text)
-  
+  select(st_id, essay_int) |> 
+  rename(text = essay_int)
+
+# path = "/Users/michaelfive/Library/CloudStorage/GoogleDrive-wuzezhen33@gmail.com/My Drive/Nepal SA Study/Data/Cleaned/text_data"
+# write_csv(text_treat_full, file.path(path, "text_treat.csv"))
+# write_csv(text_control_full, file.path(path, "text_control.csv"))
 ```
 
 # Word count
@@ -110,7 +115,7 @@ tidy_control <- text_control_full |>
 # word count
 tidy_treat %>%
   count(word, sort = TRUE) %>%
-  filter(n > 100) %>%
+  filter(n > 50) %>%
   mutate(word = reorder(word, n)) %>%
   ggplot(aes(n, word)) +
   geom_col() +
@@ -150,8 +155,8 @@ tidy_control_sentiment <- tidy_control |>
   mutate(sentiment = positive - negative)
 
 par(mfrow = c(2,1))
-hist(tidy_treat_sentiment$sentiment, breaks = seq(-10, 40, 1), main = "Sentiment among affirmed students")
-hist(tidy_control_sentiment$sentiment, breaks = seq(-10, 40, 1), main = "Sentiment among control students")
+hist(tidy_treat_sentiment$sentiment, breaks = seq(-10, 40, 1), main = "Sentiment among treated students", xlab = "")
+hist(tidy_control_sentiment$sentiment, breaks = seq(-10, 40, 1), main = "Sentiment among control students", xlab = "")
 
 summary(tidy_treat_sentiment$sentiment)
 summary(tidy_control_sentiment$sentiment)
@@ -162,46 +167,46 @@ summary(tidy_control_sentiment$sentiment)
 
 ```{r}
 # treated
-bigram_treat <- text_treat |> 
-  unnest_tokens(bigram, text, token = "ngrams", n = 2) |>
-  filter(!is.na(bigram)) |> 
-  separate(bigram, c("word1", "word2"), sep = " ") |> 
-  filter(!word1 %in% stop_words$word) |>
-  filter(!word2 %in% stop_words$word) |> 
-  count(word1, word2, sort = TRUE) |> 
-  unite(bigram, word1, word2, sep = " ") 
-  # bind_tf_idf(bigram, st_id, n) |> 
-  # arrange(desc(tf_idf))
-
-
-bigram_treat %>%
-  filter(n >= 5) |> 
-  mutate(bigram = reorder(bigram, n)) %>%
-  ggplot(aes(n, bigram)) +
-  geom_col() +
-  labs(y = NULL) + 
-  theme_bw()
-
-# control
-bigram_control <- text_control |> 
-  unnest_tokens(bigram, text, token = "ngrams", n = 2) |>
-  filter(!is.na(bigram)) |> 
-  separate(bigram, c("word1", "word2"), sep = " ") |> 
-  filter(!word1 %in% stop_words$word) |>
-  filter(!word2 %in% stop_words$word) |> 
-  count(word1, word2, sort = TRUE) |> 
-  unite(bigram, word1, word2, sep = " ") 
-  # bind_tf_idf(bigram, st_id, n) |> 
-  # arrange(desc(tf_idf))
-
-
-bigram_control %>%
-  filter(n >= 5) |> 
-  mutate(bigram = reorder(bigram, n)) %>%
-  ggplot(aes(n, bigram)) +
-  geom_col() +
-  labs(y = NULL) + 
-  theme_bw()
+# bigram_treat <- text_treat |> 
+#   unnest_tokens(bigram, text, token = "ngrams", n = 2) |>
+#   filter(!is.na(bigram)) |> 
+#   separate(bigram, c("word1", "word2"), sep = " ") |> 
+#   filter(!word1 %in% stop_words$word) |>
+#   filter(!word2 %in% stop_words$word) |> 
+#   count(word1, word2, sort = TRUE) |> 
+#   unite(bigram, word1, word2, sep = " ") 
+#   # bind_tf_idf(bigram, st_id, n) |> 
+#   # arrange(desc(tf_idf))
+# 
+# 
+# bigram_treat %>%
+#   filter(n >= 5) |> 
+#   mutate(bigram = reorder(bigram, n)) %>%
+#   ggplot(aes(n, bigram)) +
+#   geom_col() +
+#   labs(y = NULL) + 
+#   theme_bw()
+# 
+# # control
+# bigram_control <- text_control |> 
+#   unnest_tokens(bigram, text, token = "ngrams", n = 2) |>
+#   filter(!is.na(bigram)) |> 
+#   separate(bigram, c("word1", "word2"), sep = " ") |> 
+#   filter(!word1 %in% stop_words$word) |>
+#   filter(!word2 %in% stop_words$word) |> 
+#   count(word1, word2, sort = TRUE) |> 
+#   unite(bigram, word1, word2, sep = " ") 
+#   # bind_tf_idf(bigram, st_id, n) |> 
+#   # arrange(desc(tf_idf))
+# 
+# 
+# bigram_control %>%
+#   filter(n >= 5) |> 
+#   mutate(bigram = reorder(bigram, n)) %>%
+#   ggplot(aes(n, bigram)) +
+#   geom_col() +
+#   labs(y = NULL) + 
+#   theme_bw()
 ```
 
 
@@ -219,7 +224,7 @@ tidy_treat_dtm <-  tidy_treat |>
 
 
 tidy_treat_lda <- LDA(tidy_treat_dtm, 
-                      k = 10, # 14 value domains
+                      k = 4,
                       control = list(seed = 1234))
 
 # the per-topic-per-word probabilities
@@ -271,7 +276,7 @@ tidy_control_dtm <-  tidy_control |>
 
 
 tidy_control_lda <- LDA(tidy_control_dtm, 
-                      k = 10, # 14 value domains
+                      k = 4,
                       control = list(seed = 1234))
 
 # the per-topic-per-word probabilities
@@ -347,7 +352,7 @@ treat_ind_count |>
   ggplot(aes(x = reorder(word, n), y = n)) + 
   geom_col() +
   scale_y_continuous(breaks = seq(0, 60, 10), labels = as.character(seq(0, 60, 10))) +
-  labs(x = "Count", y = "", title = "Count of independent Words (Top 20)") +
+  labs(x = "Count", y = "", title = "Count of Independent Words (Top 20)") +
   coord_flip() +
   theme_bw()
 
@@ -357,7 +362,7 @@ treat_inter_count |>
   slice_head(n = 20) |> 
   ggplot(aes(x = reorder(word, n), y = n)) + 
   geom_col() +
-  labs(x = "Count", y = "", title = "Count of interdependent Words (Top 20)") +
+  labs(x = "Count", y = "", title = "Count of Interdependent Words (Top 20)") +
   coord_flip() +
   theme_bw()
 
@@ -394,7 +399,7 @@ control_ind_count |>
   ggplot(aes(x = reorder(word, n), y = n)) + 
   geom_col() +
   scale_y_continuous(breaks = seq(0, 60, 10), labels = as.character(seq(0, 60, 10))) +
-  labs(x = "Count", y = "", title = "Count of independent Words (Top 20)") +
+  labs(x = "Count", y = "", title = "Count of Independent Words (Top 20)") +
   coord_flip() +
   theme_bw()
 
@@ -404,7 +409,7 @@ control_inter_count |>
   slice_head(n = 20) |> 
   ggplot(aes(x = reorder(word, n), y = n)) + 
   geom_col() +
-  labs(x = "Count", y = "", title = "Count of interdependent Words (Top 20)") +
+  labs(x = "Count", y = "", title = "Count of Interdependent Words (Top 20)") +
   coord_flip() +
   theme_bw()
 ```
@@ -435,7 +440,7 @@ dat_liwc |>
     ind_count_control = mean(ind_count_control, na.rm = T),
     inter_count_treat = mean(inter_count_treat, na.rm = T),
     inter_count_control = mean(inter_count_control, na.rm = T)
-  )
+  ) |> data.frame()
 
 tidy_treat |> 
   count(st_id) |> 
@@ -449,12 +454,15 @@ tidy_control |>
 
 ```
 
-*Treated students*: 10.4 (19.6%) interdependent words, 2.78 (5.2%) independent words; out of 53 non-stop-word words
+*Treated students*: 10.03 (19.8%) interdependent words, 2.67 (5.3%) independent words; out of 51 non-stop-word words on average
 
-*Control students*: 5.63 (16.1%) interdependent words, 1.59 (4.5%) independent words; out of 35 non-stop-word words
+*Control students*: 5.63 (16.2%) interdependent words, 1.59 (4.6%) independent words; out of 35 non-stop-word words
 
 This finding is still quite crude. In the control exercise, students still talk about why certain values are important to their friends/family, but not themselves. This also involves mentioning interdependent words.
 
+# Generate summarized datasets
+
+## For qualitative analysis
 ```{r}
 temp <- text_treat_full |> 
   mutate(condition = "Treated") |> 
@@ -471,5 +479,27 @@ temp <- text_treat_full |>
          value_3 = int_q1_value_3_int)
 
 openxlsx::write.xlsx(temp, "/Users/michaelfive/Desktop/R Directory/NSA_qual/NSA_intervention.xlsx")
+```
+
+# For predictor analysis (ind/inter)
+```{r}
+df1 <- tidy_treat_liwc_count |> 
+  rename(ind_count_int = ind_count_treat,
+         inter_count_int = inter_count_treat)
+
+df2 <- tidy_control_liwc_count |> 
+  rename(ind_count_int = ind_count_control,
+         inter_count_int = inter_count_control)
+
+temp <- df1 |> bind_rows(df2)
+
+temp <- temp |> 
+  full_join(
+    tidy_treat |> count(st_id, name = "total_count_int") |> 
+      bind_rows(tidy_control |> count(st_id, name = "total_count_int")),
+    by = "st_id"
+  )
+
+write_csv(temp, "/Users/michaelfive/Library/CloudStorage/GoogleDrive-wuzezhen33@gmail.com/My Drive/Nepal SA Study/Data/Checks/word_count.csv")
 ```
 
