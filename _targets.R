@@ -164,6 +164,15 @@ list(
       )
   ),
   
+  # 1.6 load counts of independent, interdependent, and total words
+  tar_target(
+    word_count,
+    readr::read_csv(
+      file.path(path, "Checks/word_count.csv"),
+      show_col_types = FALSE
+    )
+  ),
+  
   # 2.1 clean data - baseline
   ## survey data
   tar_target(
@@ -257,7 +266,7 @@ list(
   # 3.1 merge data - all waves
   tar_target(
     dat_all_cleaned,
-    merge_dat(dat_b_cleaned, dat_e_cleaned, dat_int_cleaned, int_text)
+    merge_dat(dat_b_cleaned, dat_e_cleaned, dat_int_cleaned, int_text, word_count)
   ),
   
   # 3.2 cleaned data with reverse code certain items - all waves

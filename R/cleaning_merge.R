@@ -1,7 +1,8 @@
 # check consistencies across baseline, intervention, and endline
 # and then merge all data into one master dataset
 
-merge_dat <- function(dat_b_cleaned, dat_e_cleaned, dat_int_cleaned, int_text){
+merge_dat <- function(dat_b_cleaned, dat_e_cleaned, dat_int_cleaned, 
+                      int_text, word_count){
   
 # tar_load(names = c(dat_b_cleaned, dat_e_cleaned, dat_int_cleaned, name_check))
   
@@ -205,8 +206,14 @@ merge_dat <- function(dat_b_cleaned, dat_e_cleaned, dat_int_cleaned, int_text){
   
   # merge in the cleaned value essay responses
   dat_all_cleaned <- dat_all_cleaned |> 
-    left_join(int_text, by = "st_id") |> 
-    select(sch_name:int_q3_int, essay_int, mc_reason_int:pedagogy_accounting_grades_e)
+    left_join(int_text, by = "st_id")
+  
+  # merge in word counts
+  dat_all_cleaned <- dat_all_cleaned |> 
+    left_join(word_count, by = "st_id") |> 
+    select(sch_name:int_q3_int, essay_int, 
+           ind_count_int, inter_count_int, total_count_int,
+           mc_reason_int:pedagogy_accounting_grades_e)
   
   return(dat_all_cleaned)
 }
