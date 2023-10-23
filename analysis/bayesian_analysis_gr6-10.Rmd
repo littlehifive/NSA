@@ -9,6 +9,11 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Load cleaned data files
+```{r}
+#load("/Users/michaelfive/Library/CloudStorage/GoogleDrive-wuzezhen33@gmail.com/My Drive/Nepal SA Study/Analysis/model/gr6-10_survey_gpa_1015.RData")
+```
+
 # Data preparation
 
 ```{r data preparation, include = F}
@@ -70,6 +75,14 @@ dat_s$all_gpa_e <- rowMeans(dat_s[,c("nepali_gpa_e", "english_gpa_e", "math_gpa_
 #   filter(!(sch_id == 3 & grade == 12)) |> 
 #   filter(!(sch_id == 2 & grade %in% c(11, 12))) |> 
 #   filter(!(sch_id == 1 & grade %in% c(11, 12)))
+
+# qualitative codes
+tar_load(qual_code_cleaned)
+dat_s <- dat_s |> left_join(qual_code_cleaned, by = "st_id")
+
+# subset data for different treatment groups
+dat_treated <- dat_s |> filter(treated_int == 1)
+dat_control <- dat_s |> filter(treated_int == 0)
 
 ```
 
@@ -133,11 +146,6 @@ mice::md.pattern(test, rotate.names = T)
 # 3 missing intervention and endline because of no presence during data collection
 
 # So it seems reasonable to conduct complete-cases analysis.
-```
-
-# Load cleaned data files
-```{r}
-#load("/Users/michaelfive/Library/CloudStorage/GoogleDrive-wuzezhen33@gmail.com/My Drive/Nepal SA Study/Analysis/model/gr6-10_survey_gpa_0917.RData")
 ```
 
 # Descriptive statistics
@@ -1087,12 +1095,8 @@ ggplot(data = df,
 ## Subgroup Analysis (effect of independence/interdependence)
 
 ```{r}
-dat_treated <- dat_s |> filter(treated_int == 1)
-```
-
-```{r}
 fit_gpa_treated <- brm(
-    all_gpa_e ~ all_gpa_b + treated_int + ind_count_int + inter_count_int + total_count_int +
+    all_gpa_e ~ all_gpa_b + ind_count_int + inter_count_int + total_count_int +
       class_size + grade + gender + age_b + father_edu_f + mother_edu_f +
       father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
       (1 | class_id),
@@ -1106,10 +1110,20 @@ fit_gpa_treated <- brm(
 
 hypothesis(fit_gpa_treated, "ind_count_int > 0")
 hypothesis(fit_gpa_treated, "inter_count_int > 0")
-hypothesis(fit_gpa_treated, "total_count_int > 0") #
+hypothesis(fit_gpa_treated, "total_count_int > 0") ##
 hypothesis(fit_gpa_treated, "duration_int > 0") #
+hypothesis(fit_gpa_treated, "ind_count_int:inter_count_int > 0")
 
 corstarsl(dat_s |> select(ind_count_int, inter_count_int, total_count_int, duration_int))
+
+
+interact_plot(model = fit_gpa_treated, 
+              pred = "inter_count_int", 
+              modx = "ind_count_int",
+              legend.main = "Number of Indepedent Words",
+              x.label = "\nNumber of Interdependent Words",
+              y.label = "GPA\n") +
+  theme_minimal()
 
 ```
 
@@ -1131,7 +1145,16 @@ hypothesis(fit_f1_treated, "ind_count_int > 0")
 hypothesis(fit_f1_treated, "inter_count_int > 0")
 hypothesis(fit_f1_treated, "total_count_int > 0")
 hypothesis(fit_f1_treated, "duration_int > 0") #
+hypothesis(fit_f1_treated, "ind_count_int:inter_count_int > 0")
 
+
+interact_plot(model = fit_f1_treated, 
+              pred = "inter_count_int", 
+              modx = "ind_count_int",
+              legend.main = "Number of Indepedent Words",
+              x.label = "\nNumber of Interdependent Words",
+              y.label = "Self-integrity and Sense of Belonging in School\n") +
+  theme_minimal()
 ```
 
 ```{r}
@@ -1152,7 +1175,16 @@ hypothesis(fit_f2_treated, "ind_count_int < 0")
 hypothesis(fit_f2_treated, "inter_count_int > 0") # increased stereotype threat
 hypothesis(fit_f2_treated, "total_count_int < 0") #
 hypothesis(fit_f2_treated, "duration_int < 0") #
+hypothesis(fit_f2_treated, "ind_count_int:inter_count_int > 0")
 
+
+interact_plot(model = fit_f2_treated, 
+              pred = "inter_count_int", 
+              modx = "ind_count_int",
+              legend.main = "Number of Indepedent Words",
+              x.label = "\nNumber of Interdependent Words",
+              y.label = "Stereotype Threat\n") +
+  theme_minimal()
 ```
 
 ```{r}
@@ -1173,6 +1205,438 @@ hypothesis(fit_f3_treated, "ind_count_int < 0") #
 hypothesis(fit_f3_treated, "inter_count_int < 0") #
 hypothesis(fit_f3_treated, "total_count_int < 0")
 hypothesis(fit_f3_treated, "duration_int < 0")
+hypothesis(fit_f3_treated, "ind_count_int:inter_count_int > 0") #
+
+
+interact_plot(model = fit_f3_treated, 
+              pred = "inter_count_int", 
+              modx = "ind_count_int",
+              legend.main = "Number of Indepedent Words",
+              x.label = "\nNumber of Interdependent Words",
+              y.label = "Academic Stress\n") +
+  theme_minimal()
+```
+
+## Subgroup Analysis (effect of thematic codes in the treatment group)
+
+Test suppressor effect by putting only one variable in the model
+
+```{r}
+fit_gpa_treated_qual <- brm(
+    all_gpa_e ~ all_gpa_b + 
+      theme_t_interest_and_learn_new_things +
+      theme_t_religion_heritage +
+      theme_t_career_aspirations + 
+      theme_t_non_career_aspirations +
+      theme_t_self_identity +
+      theme_t_relationship_with_family +
+      theme_t_relationship_with_friends +
+      theme_t_prosocial_behavior +
+      total_count_int + 
+      class_size + grade + gender + age_b + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (1 | class_id),
+    dat_treated,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+hypothesis(fit_gpa_treated_qual, "theme_t_interest_and_learn_new_things < 0") #
+hypothesis(fit_gpa_treated_qual, "theme_t_religion_heritage > 0") #
+hypothesis(fit_gpa_treated_qual, "theme_t_career_aspirations < 0") #
+hypothesis(fit_gpa_treated_qual, "theme_t_non_career_aspirations > 0")
+hypothesis(fit_gpa_treated_qual, "theme_t_self_identity > 0") ##
+hypothesis(fit_gpa_treated_qual, "theme_t_relationship_with_family > 0")
+hypothesis(fit_gpa_treated_qual, "theme_t_relationship_with_friends > 0") ##
+hypothesis(fit_gpa_treated_qual, "theme_t_prosocial_behavior > 0")
+hypothesis(fit_gpa_treated_qual, "total_count_int > 0") ##
+
+corstarsl(dat_s |> select(ind_count_int, theme_t_interest_and_learn_new_things:theme_t_prosocial_behavior))
+```
+
+```{r}
+# posterior predictive plots
+draws <- as_draws_df(fit_gpa_treated_qual)
+
+# Convert the relevant b_theme variables to long format
+draws_long <- draws %>%
+  as.data.frame() %>%
+  select(starts_with("b_theme")) %>%
+  gather(key = "variable", value = "value") %>%
+  mutate(variable = str_replace_all(variable, "^b_theme_t_", ""),
+         variable = str_replace_all(variable, "_", " "),
+         variable = str_to_title(variable)) |> 
+  mutate(variable = case_when(
+    variable == "Career Aspirations" ~ "Career-related Aspirations",
+    variable == "Interest And Learn New Things" ~ "Personal Interests",
+    variable == "Non Career Aspirations" ~ "Non-career-related Aspirations",
+    variable == "Prosocial Behavior" ~ "Broader Prosocial Behavior",
+    variable == "Relationship With Family" ~ "Relationship with Family",
+    variable == "Relationship With Friends" ~ "Relationship with Friends",
+    variable == "Religion Heritage" ~ "Religious and Cultural Values",
+    variable == "Self Identity" ~ "Self-awareness and Growth in Self-identity"
+  ))
+
+# Define ROPE
+rope_low <- -sd(dat_s$all_gpa_e, na.rm = TRUE) * 0.02
+rope_high <- sd(dat_s$all_gpa_e, na.rm = TRUE) * 0.02
+
+# Compute the density for each group
+densities <- lapply(split(draws_long$value, draws_long$variable), density)
+
+# Combine the densities into a single data frame
+density_data <- do.call(rbind, mapply(function(dens, name) {
+  data.frame(x = dens$x, y = dens$y, variable = name)
+}, densities, names(densities), SIMPLIFY = FALSE))
+
+density_data <- density_data |> 
+  mutate(variable = factor(variable, 
+                           levels = c("Personal Interests",
+                                      "Career-related Aspirations",
+                                      "Non-career-related Aspirations",
+                                      "Religious and Cultural Values",
+                                      "Self-awareness and Growth in Self-identity",
+                                      "Relationship with Family",
+                                      "Relationship with Friends",
+                                      "Broader Prosocial Behavior"
+                                      )))
+
+# Plot using geom_ribbon
+ggplot(density_data, aes(x = x, ymin = 0, ymax = y)) +
+  geom_ribbon(aes(fill = ifelse(x < 0, "firebrick1", "steelblue1")), 
+              alpha = 0.9, 
+              show.legend = FALSE) +
+  scale_fill_identity() + 
+  geom_rect(aes(xmin = rope_low, xmax = rope_high, ymin = 0, ymax = Inf),
+            fill = "orange",
+            alpha = 0.05,
+            color = NA) +
+  facet_grid(variable ~ ., scales = "fixed", space = "free") +
+  labs(
+    x = "Posterior Estimates of Regression Coefficients",
+    y = "Density",
+    title = ""
+  ) +
+  theme_minimal() +
+  theme(
+    strip.background = element_blank(),
+    strip.text.y = element_text(angle = 0, face = "bold")
+  )
 
 ```
 
+```{r}
+# 95% high-density interval for reporting
+hdi(fit_gpa_treated_qual, ci = 0.89)
+
+# Sequential Effect eXistence and sIgnificance Testing (SEXIT) framework
+# using the empirical benchmark in Kraft (2020)
+sexit(fit_gpa_treated_qual, significant = 0.02 * sd(dat_s$all_gpa_e, na.rm = T), large = 0.05 * sd(dat_s$all_gpa_e, na.rm = T), ci = 0.89)[3,]
+
+# consider es = 0.01 as negligible
+rope(fit_gpa_treated_qual, ci = 0.89, 
+     range = c(-sd(dat_s$all_gpa_e, na.rm = T) * 0.02, 
+               sd(dat_s$all_gpa_e, na.rm = T) * 0.02))
+
+```
+
+
+```{r}
+fit_f1_treated_qual <- brm(
+    fscore_f1_e ~ fscore_f1_b + 
+      theme_t_interest_and_learn_new_things +
+      theme_t_religion_heritage +
+      theme_t_career_aspirations + 
+      theme_t_non_career_aspirations +
+      theme_t_self_identity +
+      theme_t_relationship_with_family +
+      theme_t_relationship_with_friends +
+      theme_t_prosocial_behavior +
+      class_size + grade + gender + age_b + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (1 | class_id),
+    dat_treated,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+hypothesis(fit_f1_treated_qual, "theme_t_interest_and_learn_new_things < 0") #
+hypothesis(fit_f1_treated_qual, "theme_t_religion_heritage < 0") #
+hypothesis(fit_f1_treated_qual, "theme_t_career_aspirations < 0") ##
+hypothesis(fit_f1_treated_qual, "theme_t_non_career_aspirations > 0")
+hypothesis(fit_f1_treated_qual, "theme_t_self_identity > 0")
+hypothesis(fit_f1_treated_qual, "theme_t_relationship_with_family > 0") #
+hypothesis(fit_f1_treated_qual, "theme_t_relationship_with_friends > 0")
+hypothesis(fit_f1_treated_qual, "theme_t_prosocial_behavior > 0")
+
+```
+
+```{r}
+fit_f2_treated_qual <- brm(
+    fscore_f2_e ~ fscore_f2_b + 
+      theme_t_interest_and_learn_new_things +
+      theme_t_religion_heritage +
+      theme_t_career_aspirations + 
+      theme_t_non_career_aspirations +
+      theme_t_self_identity +
+      theme_t_relationship_with_family +
+      theme_t_relationship_with_friends +
+      theme_t_prosocial_behavior +
+      class_size + grade + gender + age_b + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (1 | class_id),
+    dat_treated,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+hypothesis(fit_f2_treated_qual, "theme_t_interest_and_learn_new_things < 0")
+hypothesis(fit_f2_treated_qual, "theme_t_religion_heritage > 0")
+hypothesis(fit_f2_treated_qual, "theme_t_career_aspirations < 0") #
+hypothesis(fit_f2_treated_qual, "theme_t_non_career_aspirations > 0")
+hypothesis(fit_f2_treated_qual, "theme_t_self_identity < 0") #
+hypothesis(fit_f2_treated_qual, "theme_t_relationship_with_family > 0") ##
+hypothesis(fit_f2_treated_qual, "theme_t_relationship_with_friends < 0") #
+hypothesis(fit_f2_treated_qual, "theme_t_prosocial_behavior > 0") #
+
+```
+
+
+```{r}
+fit_f3_treated_qual <- brm(
+    fscore_f3_e ~ fscore_f3_b + 
+      theme_t_interest_and_learn_new_things +
+      theme_t_religion_heritage +
+      theme_t_career_aspirations + 
+      theme_t_non_career_aspirations +
+      theme_t_self_identity +
+      theme_t_relationship_with_family +
+      theme_t_relationship_with_friends +
+      theme_t_prosocial_behavior +
+      class_size + grade + gender + age_b + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (1 | class_id),
+    dat_treated,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+hypothesis(fit_f3_treated_qual, "theme_t_interest_and_learn_new_things > 0")
+hypothesis(fit_f3_treated_qual, "theme_t_religion_heritage > 0") #
+hypothesis(fit_f3_treated_qual, "theme_t_career_aspirations > 0") #
+hypothesis(fit_f3_treated_qual, "theme_t_non_career_aspirations > 0")
+hypothesis(fit_f3_treated_qual, "theme_t_self_identity > 0")
+hypothesis(fit_f3_treated_qual, "theme_t_relationship_with_family > 0")
+hypothesis(fit_f3_treated_qual, "theme_t_relationship_with_friends < 0")
+hypothesis(fit_f3_treated_qual, "theme_t_prosocial_behavior > 0")
+
+```
+
+## Subgroup Analysis (effect of thematic codes in the control group)
+
+```{r}
+fit_gpa_control_qual <- brm(
+    all_gpa_e ~ all_gpa_b + 
+      theme_c_no_knowledge +
+      theme_c_no_interest +
+      theme_c_communication_barriers +
+      theme_c_no_support + 
+      theme_o_aspirations +
+      theme_o_interest_ability +
+      theme_o_reward +
+      theme_o_support +
+      total_count_int +
+      class_size + grade + gender + age_b + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (1 | class_id),
+    dat_control,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+hypothesis(fit_gpa_control_qual, "theme_c_no_knowledge < 0")
+hypothesis(fit_gpa_control_qual, "theme_c_no_interest < 0")
+hypothesis(fit_gpa_control_qual, "theme_c_communication_barriers < 0")
+hypothesis(fit_gpa_control_qual, "theme_c_no_support < 0")
+
+hypothesis(fit_gpa_control_qual, "theme_o_aspirations > 0") #
+hypothesis(fit_gpa_control_qual, "theme_o_interest_ability < 0") #
+hypothesis(fit_gpa_control_qual, "theme_o_reward > 0")
+hypothesis(fit_gpa_control_qual, "theme_o_support > 0") #
+```
+
+```{r}
+# posterior predictive plots
+draws <- as_draws_df(fit_gpa_control_qual)
+
+# Convert the relevant b_theme variables to long format
+draws_long <- draws %>%
+  as.data.frame() %>%
+  select(starts_with("b_theme")) %>%
+  gather(key = "variable", value = "value") %>%
+  mutate(variable = str_replace_all(variable, "^b_theme_[co]_", ""),
+         variable = str_replace_all(variable, "_", " "),
+         variable = str_to_title(variable)) |> 
+  mutate(variable = case_when(
+    variable == "No Knowledge" ~ "Lack of Knowledge",
+    variable == "No Interest" ~ "Lack of Interest",
+    variable == "Communication Barriers" ~ "Barriers Related to Deafness and Communication",
+    variable == "No Support" ~ "Lack of Support from Friends and Family",
+    variable == "Aspirations" ~ "Aspirations Held by Others",
+    variable == "Interest Ability" ~ "Interests or Ability of Others",
+    variable == "Reward" ~ "Reward for Others",
+    variable == "Support" ~ "Availability of Support for Others from Friends and Family"
+  ))
+
+# Define ROPE
+rope_low <- -sd(dat_s$all_gpa_e, na.rm = TRUE) * 0.02
+rope_high <- sd(dat_s$all_gpa_e, na.rm = TRUE) * 0.02
+
+# Compute the density for each group
+densities <- lapply(split(draws_long$value, draws_long$variable), density)
+
+# Combine the densities into a single data frame
+density_data <- do.call(rbind, mapply(function(dens, name) {
+  data.frame(x = dens$x, y = dens$y, variable = name)
+}, densities, names(densities), SIMPLIFY = FALSE))
+
+density_data <- density_data |> 
+  mutate(variable = factor(variable, 
+                           levels = c("Lack of Knowledge",
+                                      "Lack of Interest",
+                                      "Barriers Related to Deafness and Communication",
+                                      "Lack of Support from Friends and Family",
+                                      "Interests or Ability of Others",
+                                      "Aspirations Held by Others",
+                                      "Reward for Others",
+                                      "Availability of Support for Others from Friends and Family"
+                                      )))
+
+# Plot using geom_ribbon
+ggplot(density_data, aes(x = x, ymin = 0, ymax = y)) +
+  geom_ribbon(aes(fill = ifelse(x < 0, "firebrick1", "steelblue1")), 
+              alpha = 0.9, 
+              show.legend = FALSE) +
+  scale_fill_identity() + 
+  geom_rect(aes(xmin = rope_low, xmax = rope_high, ymin = 0, ymax = Inf),
+            fill = "orange",
+            alpha = 0.05,
+            color = NA) +
+  facet_grid(variable ~ ., scales = "fixed", space = "free") +
+  labs(
+    x = "Posterior Estimates of Regression Coefficients",
+    y = "Density",
+    title = ""
+  ) +
+  theme_minimal() +
+  theme(
+    strip.background = element_blank(),
+    strip.text.y = element_text(angle = 0, face = "bold")
+  )
+
+```
+
+```{r}
+# 95% high-density interval for reporting
+hdi(fit_gpa_control_qual, ci = 0.89)
+
+# Sequential Effect eXistence and sIgnificance Testing (SEXIT) framework
+# using the empirical benchmark in Kraft (2020)
+sexit(fit_gpa_control_qual, significant = 0.02 * sd(dat_s$all_gpa_e, na.rm = T), large = 0.05 * sd(dat_s$all_gpa_e, na.rm = T), ci = 0.89)[3,]
+
+# consider es = 0.01 as negligible
+rope(fit_gpa_control_qual, ci = 0.89, 
+     range = c(-sd(dat_s$all_gpa_e, na.rm = T) * 0.02, 
+               sd(dat_s$all_gpa_e, na.rm = T) * 0.02))
+
+```
+
+```{r}
+fit_f1_control_qual <- brm(
+    fscore_f1_e ~ fscore_f1_b + 
+      theme_c_no_knowledge +
+      theme_c_no_interest +
+      theme_c_communication_barriers +
+      theme_c_no_support + 
+      class_size + grade + gender + age_b + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (1 | class_id),
+    dat_control,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+hypothesis(fit_f1_control_qual, "theme_c_no_knowledge < 0")
+hypothesis(fit_f1_control_qual, "theme_c_no_interest > 0") #
+hypothesis(fit_f1_control_qual, "theme_c_communication_barriers > 0")
+hypothesis(fit_f1_control_qual, "theme_c_no_support > 0") #
+
+```
+
+```{r}
+fit_f2_control_qual <- brm(
+    fscore_f2_e ~ fscore_f2_b + 
+      theme_c_no_knowledge +
+      theme_c_no_interest +
+      theme_c_communication_barriers +
+      theme_c_no_support + 
+      class_size + grade + gender + age_b + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (1 | class_id),
+    dat_control,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+hypothesis(fit_f2_control_qual, "theme_c_no_knowledge < 0")
+hypothesis(fit_f2_control_qual, "theme_c_no_interest < 0")
+hypothesis(fit_f2_control_qual, "theme_c_communication_barriers < 0")
+hypothesis(fit_f2_control_qual, "theme_c_no_support > 0")
+
+```
+
+```{r}
+fit_f3_control_qual <- brm(
+    fscore_f3_e ~ fscore_f3_b + 
+      theme_c_no_knowledge +
+      theme_c_no_interest +
+      theme_c_communication_barriers +
+      theme_c_no_support + 
+      class_size + grade + gender + age_b + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      (1 | class_id),
+    dat_control,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+hypothesis(fit_f3_control_qual, "theme_c_no_knowledge > 0") #
+hypothesis(fit_f3_control_qual, "theme_c_no_interest < 0") #
+hypothesis(fit_f3_control_qual, "theme_c_communication_barriers > 0")
+hypothesis(fit_f3_control_qual, "theme_c_no_support < 0") #
+
+```

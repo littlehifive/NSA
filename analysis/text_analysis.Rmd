@@ -19,6 +19,9 @@ library(topicmodels)
 # load data
 dat <- tar_read(dat_all_cleaned_reverse_coded)
 
+# filter in grades 6-10
+dat <- dat |> filter(grade %in% c(6:10))
+
 dat_treat <- dat |> filter(treated_int == 1)
 dat_control <- dat |> filter(treated_int == 0)
 ```
