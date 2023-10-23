@@ -173,6 +173,14 @@ list(
     )
   ),
   
+  # 1.7 load qualitative coded themes
+  tar_target(
+    qual_code,
+    openxlsx::read.xlsx(
+      file.path(path, "Checks/qual_docu_var.xlsx"), sheet = 1
+    )
+  ),
+  
   # 2.1 clean data - baseline
   ## survey data
   tar_target(
@@ -263,6 +271,12 @@ list(
       )
   ),
   
+  # 2.4 clean data - qual codes
+  tar_target(
+    qual_code_cleaned,
+    clean_qual_code(qual_code)
+  ),
+  
   # 3.1 merge data - all waves
   tar_target(
     dat_all_cleaned,
@@ -350,5 +364,9 @@ list(
     export_dat_all_cleaned_combine_coded_fscore,
     readr::write_csv(dat_all_cleaned_combine_coded_fscore |> dplyr::select(st_id, fscore_f1_b:fscore_f3_e), 
                      file.path(path, "Cleaned/factor_scores.csv"))
+  ),
+  tar_target(
+    export_qual_code_cleaned,
+    readr::write_csv(qual_code_cleaned, file.path(path, "Cleaned/qual_code_cleaned.csv"))
   )
 )
