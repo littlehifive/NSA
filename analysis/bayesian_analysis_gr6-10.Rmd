@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Load cleaned data files
 ```{r}
-#load("/Users/michaelfive/Library/CloudStorage/GoogleDrive-wuzezhen33@gmail.com/My Drive/Nepal SA Study/Analysis/model/gr6-10_survey_gpa_1015.RData")
+#load("/Users/michaelfive/Library/CloudStorage/GoogleDrive-wuzezhen33@gmail.com/My Drive/Nepal SA Study/Analysis/model/gr6-10_survey_gpa_1019.RData")
 ```
 
 # Data preparation
