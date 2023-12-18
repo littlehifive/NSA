@@ -44,33 +44,7 @@ source("R/functions.R")
 # Stan option
 options(mc.cores = parallel::detectCores())
 
-# combine coded master dataset with fscores
-dat_fs <- tar_read(dat_all_cleaned_combine_coded_fscore)
-
-# our analysis focuses those from grade 6 to 10, due to difficulty in collecting outcome variables for students in grade 11 and 12 during COVID time (see manuscript for the limitation of this action)
-dat_s <- dat_fs |> 
-  filter(!is.na(treated_int)) |> 
-  filter(grade %in% c(6:10))
-
-# scale within each classroom
-dat_s <- dat_s |> 
-  group_by(class_id) |> 
-  mutate_at(vars(fscore_f1_b:fscore_f3_e), function(x){as.numeric(scale(x))})
-
-# select the useful variables
-dat_s <- dat_s |> select(
-  st_id, sch_id, grade, class_id, class_size, gender, age_b, student_type, father_edu_f,
-  mother_edu_f, father_occ_salary, mother_occ_salary, adult_members,
-  siblings, treated_int, duration_int, 
-  int_q1_value_1_int, int_q1_value_2_int, int_q1_value_3_int,
-  ind_count_int, inter_count_int, total_count_int,
-  mc_survey_1_int:mc_survey_4_int,
-  nepali_scores_b:science_grades_b,
-  nepali_scores_e:science_grades_e,
-  fscore_f1_b:fscore_f3_e)
-
-dat_s$all_gpa_b <- rowMeans(dat_s[,c("nepali_gpa_b", "english_gpa_b", "math_gpa_b", "science_gpa_b")], na.rm = T)
-dat_s$all_gpa_e <- rowMeans(dat_s[,c("nepali_gpa_e", "english_gpa_e", "math_gpa_e", "science_gpa_e")], na.rm = T)
+# `dat_s` is the main de-identified dataset
 ```
 
 # Missingness Check
