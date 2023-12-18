@@ -4,8 +4,6 @@ This git repo contains codes that are used to clean and analyze the data used in
 
 \<Values Affirmation Intervention Boosts Academic Performance and Psychological Well- Being in School for Deaf Students in Nepal Evidence from a Randomized Controlled Trial\>
 
-Zezhen Wu, Shwetlena Sabarwal, J. Lawrence Aber
-
 Notes:
 
 1.  We used the `targets` package for reproducible data cleaning. However, we are not able to sharing the raw uncleaned data, because combinations of demographic information may be used to identify the students. We share the cleaning codes here (in the `R/` folder and the `_targets.R` file) to showcase our effect to build a reproducible data cleaning workflow during and after project data collection.
