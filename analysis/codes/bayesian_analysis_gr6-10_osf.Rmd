@@ -80,20 +80,31 @@ mice::md.pattern(test, rotate.names = T)
 # Descriptive statistics
 ```{r}
 # The following statistics/plots are calculated as evidence in the impact evaluation manuscript.
+
+# number of students
 length(unique(dat_s$st_id))
+
+# school summary stats
 table(dat_s$sch_id)
 table(dat_s$sch_id, dat_s$grade, dat_s$treated_int)
 
+# gender summary stats
 prop.table(table(dat_s$gender))
+
+# grade summary stats
 prop.table(table(dat_s$grade))
 
+# age summary stats
 mean(dat_s$age_b, na.rm = T)
 sd(dat_s$age_b, na.rm = T)
 
+# treatment alloocation
 table(dat_s$treated_int)
 
+# number of hearing students
 table(dat_s$student_type)
 
+# GPA by school and treatment condition
 df <- dat_s |> select(
       st_id, sch_id, fscore_f1_e, fscore_f1_b, fscore_f2_e, fscore_f2_b, fscore_f3_e, fscore_f3_b, treated_int, class_size, grade, gender, age_b, 
       father_edu_f, mother_edu_f, 
@@ -116,21 +127,29 @@ df <- dat_s |> select(
     n = n()
   ); df
 
+# GPA by school
 dat_s |> group_by(sch_id) |> reframe(m = mean(all_gpa_e, na.rm = T))
-
 dat_s |> group_by(sch_id) |> reframe(m = mean(all_gpa_b, na.rm = T))
 
+# GPA summary stats
 mean(dat_s$all_gpa_b, na.rm = T)
 mean(dat_s$all_gpa_e, na.rm = T)
 sd(dat_s$all_gpa_b, na.rm = T)
 sd(dat_s$all_gpa_e, na.rm = T)
 
+# Psychological well-being summary stats
 mean(dat_s$fscore_f1_b, na.rm = T)
 mean(dat_s$fscore_f2_b, na.rm = T)
 mean(dat_s$fscore_f3_b, na.rm = T)
 mean(dat_s$fscore_f1_e, na.rm = T)
 mean(dat_s$fscore_f2_e, na.rm = T)
 mean(dat_s$fscore_f3_e, na.rm = T)
+
+# Manipulation check
+dat_s |> group_by(treated_int) |> summarise(m = mean(mc_survey_1_int, na.rm = T))
+dat_s |> group_by(treated_int) |> summarise(m = mean(mc_survey_2_int, na.rm = T))
+dat_s |> group_by(treated_int) |> summarise(m = mean(mc_survey_3_int, na.rm = T))
+dat_s |> group_by(treated_int) |> summarise(m = mean(mc_survey_4_int, na.rm = T))
 ```
 
 ```{r}
