@@ -22,13 +22,14 @@ options(clustermq.scheduler = "multicore")
 
 # Run the R scripts in the R/ folder with your custom functions:
 tar_source()
-# source("other_functions.R") # Source other scripts as needed. # nolint
+# Data path anonymized for peer review (backup folder is in .gitignore to prevent any information identifiable of the authors committed to GitHub)
+source("backup/gdrive_path.R")
 
 # Replace the target list below with your own:
 list(
   # 0. set data file root path
   tar_target(
-    path, "/Users/michaelfive/Library/CloudStorage/GoogleDrive-wuzezhen33@gmail.com/My Drive/Nepal SA Study/Data"
+    path, gdrive_path
   ),
   
   # 1.1 load raw data - baseline
