@@ -563,7 +563,7 @@ sexit(fit_gpa_x_low_performance_cont)
 ```{r}
 dat_s$fscore_f1_b_rev <- -dat_s$fscore_f1_b
 
-dat_s$psych_threat <- rowMeans(dat_s[, c("fscore_f1_b_rev", "fscore_f2_b", "fscore_f2_b")], na.rm = T)
+dat_s$psych_threat <- rowMeans(dat_s[, c("fscore_f1_b_rev", "fscore_f2_b", "fscore_f3_b")], na.rm = T)
 
 hist(dat_s$psych_threat)
 
