@@ -178,9 +178,9 @@ df <- df |>
                               "Control")
          )  |> 
   mutate(class_id = case_when(
-           class_id %in% c(1:5) ~ paste0("School A Grade ", class_id + 5),
-           class_id %in% c(8:12) ~ paste0("School B Grade ", class_id - 2),
-           class_id %in% c(15:19) ~ paste0("School C Grade ", class_id - 9)
+           class_id %in% c(1:5) ~ paste0("School C Grade ", class_id + 5),
+           class_id %in% c(8:12) ~ paste0("School A Grade ", class_id - 2),
+           class_id %in% c(15:19) ~ paste0("School B Grade ", class_id - 9)
          )) |> 
   mutate(class_id = factor(class_id,
                            levels = c(
