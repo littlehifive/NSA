@@ -53,13 +53,13 @@ options(mc.cores = parallel::detectCores())
 # Tests the null hypothesis that the missing data is Missing Completely At Random (MCAR). A p.value of less than 0.05 is usually interpreted as being that the missing data is not MCAR (i.e., is either Missing At Random or non-ignorable).
 
 test <- dat_s |> select(
-      st_id, all_gpa_e, all_gpa_b, fscore_f1_b, fscore_f1_e, fscore_f2_b, fscore_f2_e, fscore_f3_b, fscore_f3_e, treated_int, class_size, grade, gender, age_b, 
+      st_id, all_gpa_e, all_gpa_b, fscore_f1_b, fscore_f1_e, fscore_f2_b, fscore_f2_e, fscore_f3_b, fscore_f3_e, treated_int, grade, gender, age_b, 
       father_edu_f, mother_edu_f, 
-      father_occ_salary, mother_occ_salary, adult_members, siblings, duration_int)
+      father_occ_salary, mother_occ_salary, adult_members, siblings)
 
 #   statistic    df p.value missing.patterns
 #       <dbl> <dbl>   <dbl>            <int>
-# 1      183.   173   0.288               12
+# 1      127.   116   0.237               10
 naniar::mcar_test(test)
 
 mice::md.pattern(test, rotate.names = T)
@@ -106,9 +106,9 @@ table(dat_s$student_type)
 
 # GPA by school and treatment condition
 df <- dat_s |> select(
-      st_id, sch_id, fscore_f1_e, fscore_f1_b, fscore_f2_e, fscore_f2_b, fscore_f3_e, fscore_f3_b, treated_int, class_size, grade, gender, age_b, 
+      st_id, sch_id, fscore_f1_e, fscore_f1_b, fscore_f2_e, fscore_f2_b, fscore_f3_e, fscore_f3_b, treated_int, grade, gender, age_b, 
       father_edu_f, mother_edu_f, 
-      father_occ_salary, mother_occ_salary, adult_members, siblings, duration_int) |> 
+      father_occ_salary, mother_occ_salary, adult_members, siblings) |> 
   na.omit() |> 
   group_by(sch_id, treated_int) |> 
   summarise(
@@ -253,9 +253,8 @@ my_prior <- prior("normal(0, 1)", class = "b")
 # check default priors for other parameters
 validate_prior(
     my_prior,
-    fscore_f1_e ~ fscore_f1_b + treated_int +
-    class_size + grade + gender + age_b + student_type + father_edu_f + mother_edu_f +
-    father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int +
+    fscore_f1_e ~ fscore_f1_b + treated_int + grade + gender + age_b + student_type + father_edu_f + mother_edu_f +
+    father_occ_salary + mother_occ_salary + adult_members + siblings +
     (treated_int | class_id),
   dat_s)
 ```
@@ -264,9 +263,8 @@ validate_prior(
 
 ```{r}
 fit_gpa <- brm(
-    all_gpa_e ~ all_gpa_b + treated_int +
-      class_size + grade + gender + age_b + student_type + father_edu_f + mother_edu_f +
-      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+    all_gpa_e ~ all_gpa_b + treated_int + grade + gender + age_b + student_type + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id +
       (treated_int | class_id),
     dat_s,
     prior = my_prior, 
@@ -337,9 +335,8 @@ hdi(posterior_samples, ci = 0.89)
 ```{r}
 # Self-efficacy and sense of belonging in school
 fit_f1 <- brm(
-    fscore_f1_e ~ fscore_f1_b + treated_int +
-      class_size + grade + gender + age_b + student_type + father_edu_f + mother_edu_f +
-      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id + all_gpa_b + 
+    fscore_f1_e ~ fscore_f1_b + treated_int + grade + gender + age_b + student_type + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id + all_gpa_b + 
       (treated_int | class_id),
     dat_s,
     prior = my_prior, 
@@ -351,9 +348,8 @@ fit_f1 <- brm(
 
 # Stereotype threat  
 fit_f2 <- brm(
-    fscore_f2_e ~ fscore_f2_b + treated_int +
-      class_size + grade + gender + age_b + student_type + father_edu_f + mother_edu_f +
-      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id + all_gpa_b +
+    fscore_f2_e ~ fscore_f2_b + treated_int + grade + gender + age_b + student_type + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id + all_gpa_b +
       (treated_int | class_id),
     dat_s,
     prior = my_prior, 
@@ -365,9 +361,8 @@ fit_f2 <- brm(
  
 # Academic stress 
 fit_f3 <- brm(
-    fscore_f3_e ~ fscore_f3_b + treated_int +
-      class_size + grade + gender + age_b + student_type + father_edu_f + mother_edu_f +
-      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id + all_gpa_b +
+    fscore_f3_e ~ fscore_f3_b + treated_int + grade + gender + age_b + student_type + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id + all_gpa_b +
       (treated_int | class_id),
     dat_s,
     prior = my_prior, 
@@ -511,10 +506,9 @@ dat_s <- dat_s |>
 ```{r}
 # using baseline performance (dichotomous) as the moderator
 fit_gpa_x_low_performance <- brm(
-    all_gpa_e ~ all_gpa_b + treated_int * low_performing +
-      class_size + grade + gender + age_b + student_type +
+    all_gpa_e ~ all_gpa_b + treated_int * low_performing + grade + gender + age_b + student_type +
       father_edu_f + mother_edu_f +
-      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id +
       (treated_int | class_id),
     data = dat_s,
     prior = my_prior, 
@@ -535,10 +529,9 @@ sexit(fit_gpa_x_low_performance)
 ```{r}
 # using baseline performance (continuous) as the moderator
 fit_gpa_x_low_performance_cont <- brm(
-    all_gpa_e ~ all_gpa_b + treated_int * all_gpa_b +
-      class_size + grade + gender + age_b + student_type +
+    all_gpa_e ~ all_gpa_b + treated_int * all_gpa_b + grade + gender + age_b + student_type +
       father_edu_f + mother_edu_f +
-      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id +
       (treated_int | class_id),
     data = dat_s,
     prior = my_prior, 
@@ -568,9 +561,9 @@ dat_s$psych_threat <- rowMeans(dat_s[, c("fscore_f1_b_rev", "fscore_f2_b", "fsco
 hist(dat_s$psych_threat)
 
 fit_gpa_x_psych_threat <- brm(
-    all_gpa_e ~ all_gpa_b + treated_int * psych_threat + class_size + grade + gender + age_b + student_type +
+    all_gpa_e ~ all_gpa_b + treated_int * psych_threat + grade + gender + age_b + student_type +
       father_edu_f + mother_edu_f +
-      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id +
       (treated_int | class_id),
     data = dat_s,
     prior = my_prior, 
@@ -613,9 +606,9 @@ dat_s <- dat_s |>
 
 # treatment effect for high threat
 fit_gpa_x_psych_threat_high <- brm(
-    all_gpa_e ~ all_gpa_b + treated_int * psych_threat_m1sd + class_size + grade + gender + age_b + student_type +
+    all_gpa_e ~ all_gpa_b + treated_int * psych_threat_m1sd + grade + gender + age_b + student_type +
       father_edu_f + mother_edu_f +
-      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id +
       (treated_int | class_id),
     data = dat_s,
     prior = my_prior, 
@@ -629,9 +622,9 @@ hdi(fit_gpa_x_psych_threat_high, ci = 0.89)
 
 # treatment effect for low threat
 fit_gpa_x_psych_threat_low <- brm(
-    all_gpa_e ~ all_gpa_b + treated_int * psych_threat_p1sd + class_size + grade + gender + age_b + student_type +
+    all_gpa_e ~ all_gpa_b + treated_int * psych_threat_p1sd + grade + gender + age_b + student_type +
       father_edu_f + mother_edu_f +
-      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id +
       (treated_int | class_id),
     data = dat_s,
     prior = my_prior, 
@@ -650,9 +643,9 @@ hdi(fit_gpa_x_psych_threat_low, ci = 0.89)
 hist(dat_s$fscore_f2_b)
 
 fit_gpa_x_stereotype_threat <- brm(
-    all_gpa_e ~ all_gpa_b + treated_int * fscore_f2_b + class_size + grade + gender + age_b + student_type + 
+    all_gpa_e ~ all_gpa_b + treated_int * fscore_f2_b + grade + gender + age_b + student_type + 
       father_edu_f + mother_edu_f +
-      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id +
       (treated_int | class_id),
     data = dat_s,
     prior = my_prior, 
@@ -697,9 +690,9 @@ dat_s <- dat_s |>
 
 # treatment effect for high threat
 fit_gpa_x_stereotype_threat_high <- brm(
-    all_gpa_e ~ all_gpa_b + treated_int * fscore_f2_b_m1sd + class_size + grade + gender + age_b + student_type +
+    all_gpa_e ~ all_gpa_b + treated_int * fscore_f2_b_m1sd + grade + gender + age_b + student_type +
       father_edu_f + mother_edu_f +
-      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id +
       (treated_int | class_id),
     data = dat_s,
     prior = my_prior, 
@@ -713,9 +706,9 @@ hdi(fit_gpa_x_stereotype_threat_high, ci = 0.89)
 
 # treatment effect for low threat
 fit_gpa_x_stereotype_threat_low <- brm(
-    all_gpa_e ~ all_gpa_b + treated_int * fscore_f2_b_p1sd + class_size + grade + gender + age_b + student_type +
+    all_gpa_e ~ all_gpa_b + treated_int * fscore_f2_b_p1sd + grade + gender + age_b + student_type +
       father_edu_f + mother_edu_f +
-      father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + sch_id +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id +
       (treated_int | class_id),
     data = dat_s,
     prior = my_prior, 
@@ -734,10 +727,10 @@ hdi(fit_gpa_x_stereotype_threat_low, ci = 0.89)
 # Stereotype threat as a mediator (explorative analysis based on pre-registration)
 
 # Mediator model
-mediator_model <- bf(fscore_f2_e ~ fscore_f2_b + treated_int + class_size + grade + gender + age_b + student_type + father_edu_f + mother_edu_f + father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + (treated_int | class_id))
+mediator_model <- bf(fscore_f2_e ~ fscore_f2_b + treated_int + grade + gender + age_b + student_type + father_edu_f + mother_edu_f + father_occ_salary + mother_occ_salary + adult_members + siblings + (treated_int | class_id))
 
 # Outcome model with mediator (fscore_f2_e) included
-outcome_model <- bf(all_gpa_e ~ all_gpa_b + fscore_f2_e + treated_int + class_size + grade + gender + age_b + student_type + father_edu_f + mother_edu_f + father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int + (treated_int | class_id))
+outcome_model <- bf(all_gpa_e ~ all_gpa_b + fscore_f2_e + treated_int + grade + gender + age_b + student_type + father_edu_f + mother_edu_f + father_occ_salary + mother_occ_salary + adult_members + siblings + (treated_int | class_id))
 
 # Fit the Bayesian mediation model
 mediation_model <- brm(mediator_model + outcome_model + set_rescor(FALSE),
