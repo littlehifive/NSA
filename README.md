@@ -4,6 +4,8 @@ This git repo contains codes that are used to clean and analyze the data used in
 
 Wu, Z., Sabarwal, S., Basnet, D. et al. Understanding the effects of values affirmation on deaf students in Nepal: evidence from a randomized controlled trial. Soc Psychol Educ 28, 140 (2025). https://doi.org/10.1007/s11218-025-10097-7
 
+See also [the study page](https://osf.io/4nprt/) on Open Science Framework (OSF).
+
 Notes:
 
 1.  We used the `targets` package for reproducible data cleaning. However, we are not able to sharing the raw uncleaned data, because combinations of demographic information may be used to identify the students. We share the cleaning codes here (in the `R/` folder and the `_targets.R` file) to showcase our effect to build a reproducible data cleaning workflow during and after project data collection.
