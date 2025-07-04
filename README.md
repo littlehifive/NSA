@@ -2,7 +2,7 @@
 
 This git repo contains codes that are used to clean and analyze the data used in the following paper:
 
-\<Values Affirmation Intervention Boosts Academic Performance and Psychological Well- Being in School for Deaf Students in Nepal Evidence from a Randomized Controlled Trial\>
+Wu, Z., Sabarwal, S., Basnet, D. et al. Understanding the effects of values affirmation on deaf students in Nepal: evidence from a randomized controlled trial. Soc Psychol Educ 28, 140 (2025). https://doi.org/10.1007/s11218-025-10097-7
 
 Notes:
 
