@@ -1,0 +1,1060 @@
+---
+title: "NSA Analysis"
+author: "Zezhen Wu"
+date: "2025-07-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Load Cleaned Data Files
+```{r}
+#load("/.../NSA_cleaned_OSF.RData")
+```
+
+# Data Preparation
+
+```{r data preparation, include = F}
+library(tidyverse)
+library(targets)
+library(brms)
+library(mice)
+library(bayestestR)
+library(performance)
+library(broom.mixed)
+library(lme4)
+library(bayesplot)
+library(interactions)
+library(rstanarm)
+
+source("R/functions.R")
+
+# stan option
+options(mc.cores = parallel::detectCores())
+
+# reversed coded master dataset
+# dat <- tar_read(dat_all_cleaned_reverse_coded)
+
+# combine coded master dataset
+dat_t <- tar_read(dat_all_cleaned_combine_coded)
+
+# combine coded master dataset with fscores
+dat_fs <- tar_read(dat_all_cleaned_combine_coded_fscore)
+```
+
+# Handling Missingness
+
+```{r}
+dat_s <- dat_fs |> 
+  filter(!is.na(treated_int)) |> 
+  filter(grade %in% c(6:10))
+
+# scale within each classroom
+dat_s <- dat_s |> 
+  group_by(class_id) |> 
+  mutate_at(vars(fscore_f1_b:fscore_f3_e), function(x){as.numeric(scale(x))})
+
+# exclude the raw survey items to prevent double-dipping in multiple imputation
+dat_s <- dat_s |> select(
+  st_id, sch_id, grade, class_id, class_size, gender, age_b, student_type, father_edu_f,
+  mother_edu_f, father_occ_salary, mother_occ_salary, adult_members,
+  siblings, treated_int, duration_int, 
+  int_q1_value_1_int, int_q1_value_2_int, int_q1_value_3_int,
+  ind_count_int, inter_count_int, total_count_int,
+  mc_survey_1_int:mc_survey_4_int,
+  nepali_scores_b:science_grades_b,
+  nepali_scores_e:science_grades_e,
+  fscore_f1_b:fscore_f3_e)
+
+dat_s$all_gpa_b <- rowMeans(dat_s[,c("nepali_gpa_b", "english_gpa_b", "math_gpa_b", "science_gpa_b")], na.rm = T)
+dat_s$all_gpa_e <- rowMeans(dat_s[,c("nepali_gpa_e", "english_gpa_e", "math_gpa_e", "science_gpa_e")], na.rm = T)
+
+# qualitative codes
+tar_load(qual_code_cleaned)
+dat_s <- dat_s |> left_join(qual_code_cleaned, by = "st_id")
+
+# subset data for different treatment groups
+dat_treated <- dat_s |> filter(treated_int == 1)
+dat_control <- dat_s |> filter(treated_int == 0)
+
+```
+
+```{r, include = F}
+# Jakobsen et al. BMC Medical Research Methodology (2017) 17:162
+test <- dat_s |> select(fscore_f1_b, fscore_f1_e, treated_int ,
+      class_size , grade , gender , age_b , student_type ,
+      #father_edu_f , mother_edu_f ,
+      father_occ_salary , mother_occ_salary , adult_members , siblings , duration_int , sch_id)
+
+mice::md.pattern(test, rotate.names = T)
+
+# percentage of complete cases (GPA, three survey outcomes): 0.651 0.591 0.591 0.591
+round(c(175, 159, 159, 159)/(nrow(dat_s)),3)
+
+# quite many missingness occurred due to students not knowing father's or mother's education, after removing these two variables: 0.907 0.825 0.825 0.825
+round(c(244, 222, 222, 222)/(nrow(dat_s)),3)
+
+```
+
+```{r}
+# Tests the null hypothesis that the missing data is Missing Completely At Random (MCAR). A p.value of less than 0.05 is usually interpreted as being that the missing data is not MCAR (i.e., is either Missing At Random or non-ignorable).
+
+test <- dat_s |> select(
+      st_id, all_gpa_e, all_gpa_b, fscore_f1_b, fscore_f1_e, fscore_f2_b, fscore_f2_e, fscore_f3_b, fscore_f3_e, treated_int, class_size, grade, gender, age_b, 
+      father_edu_f, mother_edu_f, 
+      father_occ_salary, mother_occ_salary, adult_members, siblings, duration_int)
+
+#   statistic    df p.value missing.patterns
+#       <dbl> <dbl>   <dbl>            <int>
+# 1      183.   173   0.288               12
+naniar::mcar_test(test)
+
+
+mice::md.pattern(test, rotate.names = T)
+# We believe the missing data is MCAR, because we know the missingness has random and distinct reasons.
+
+# 32 missing all endline survey data because they were not in school during the data collection for non-academic reasons
+# 10 missing GPA either because they did not take the exam or school record entry errors
+# 1 missing both survey and GPA
+# 1 missing baseline age potentially due to entry error
+# 1 + 6 missing all baseline data because no presence during data collection
+# 1 + 1 missing all baseline and endline data because no presence during data collection
+# 3 missing intervention data because of no presence during data collection
+# 3 missing intervention and endline because of no presence during data collection
+
+# So it seems reasonable to conduct complete-cases analysis.
+```
+
+# Descriptive Statistics
+```{r}
+length(unique(dat_s$st_id))
+table(dat_s$sch_id)
+table(dat_s$sch_id, dat_s$grade, dat_s$treated_int)
+
+prop.table(table(dat_s$gender))
+prop.table(table(dat_s$grade))
+
+mean(dat_s$age_b, na.rm = T)
+sd(dat_s$age_b, na.rm = T)
+
+table(dat_s$treated_int)
+
+table(dat_s$student_type)
+
+df <- dat_s |> select(
+      st_id, sch_id, all_gpa_e, all_gpa_b, treated_int, class_size, grade, gender, age_b, 
+      father_edu_f, mother_edu_f, 
+      father_occ_salary, mother_occ_salary, adult_members, siblings, duration_int) |> 
+  na.omit() |> 
+  group_by(sch_id, treated_int) |> 
+  summarise(
+    m_e = mean(all_gpa_e, na.rm = T),
+    sd_e = sd(all_gpa_e, na.rm = T),
+    m_b = mean(all_gpa_b, na.rm = T),
+    sd_b = sd(all_gpa_b, na.rm = T),
+    n = n()
+  ); df
+
+# Reshape the data
+df_long <- df %>%
+  gather(key = "time", value = "score", c(m_b, m_e)) %>%
+  gather(key = "sd_time", value = "sd", c(sd_b, sd_e)) %>%
+  mutate(time = ifelse(time == "m_b", "Baseline", "Endline"),
+         treated_int = ifelse(treated_int == 0, "Control", "Treatment"),
+         sch_id = recode(sch_id, `1` = "Baglung", `2` = "Kathmandu", `3` = "Pokhara"),
+         se = sd/sqrt(n)) %>%
+  filter((time == "Baseline" & sd_time == "sd_b") | (time == "Endline" & sd_time == "sd_e")) 
+
+# Define dodge width
+dodge <- position_dodge(width=0.2)
+
+# Plot the data
+ggplot(df_long, aes(x = time, y = score, color = treated_int, group = treated_int)) +
+  geom_line(position = dodge) +
+  geom_point(position = dodge) +
+  geom_errorbar(aes(ymin = score - se, ymax = score + se), width = 0.2, position = dodge) +
+  facet_wrap(~ sch_id) +
+  scale_x_discrete(labels = c("Baseline", "Endline")) +
+  scale_color_discrete(labels = c("Control", "Treatment")) +
+  labs(color = "",
+       x = "\nTime",
+       y = "GPA\n") +
+  theme_bw()
+
+
+df <- dat_s |> select(
+      st_id, sch_id, fscore_f1_e, fscore_f1_b, fscore_f2_e, fscore_f2_b, fscore_f3_e, fscore_f3_b, treated_int, class_size, grade, gender, age_b, 
+      father_edu_f, mother_edu_f, 
+      father_occ_salary, mother_occ_salary, adult_members, siblings, duration_int) |> 
+  na.omit() |> 
+  group_by(sch_id, treated_int) |> 
+  summarise(
+    m_f1_e = mean(fscore_f1_e, na.rm = T),
+    sd_f1_e = sd(fscore_f1_e, na.rm = T),
+    m_f1_b = mean(fscore_f1_b, na.rm = T),
+    sd_f1_b = sd(fscore_f1_b, na.rm = T),
+    m_f2_e = mean(fscore_f2_e, na.rm = T),
+    sd_f2_e = sd(fscore_f2_e, na.rm = T),
+    m_f2_b = mean(fscore_f2_b, na.rm = T),
+    sd_f2_b = sd(fscore_f2_b, na.rm = T),
+    m_f3_e = mean(fscore_f3_e, na.rm = T),
+    sd_f3_e = sd(fscore_f3_e, na.rm = T),
+    m_f3_b = mean(fscore_f3_b, na.rm = T),
+    sd_f3_b = sd(fscore_f3_b, na.rm = T),
+    n = n()
+  ); df
+
+dat_s |> group_by(sch_id) |> reframe(m = mean(all_gpa_e, na.rm = T))
+
+dat_s |> group_by(sch_id) |> reframe(m = mean(all_gpa_b, na.rm = T))
+
+mean(dat_s$all_gpa_b, na.rm = T)
+mean(dat_s$all_gpa_e, na.rm = T)
+
+mean(dat_s$all_gpa_b < 2.4, na.rm = T)
+mean(dat_s$all_gpa_e < 2.4, na.rm = T)
+
+dat_s |> group_by(sch_id) |> reframe(
+  m1 = mean(all_gpa_b < 2.4, na.rm = T),
+  m1 = mean(all_gpa_b < 2, na.rm = T)
+)
+
+sd(dat_s$all_gpa_b, na.rm = T)
+sd(dat_s$all_gpa_e, na.rm = T)
+mean(dat_s$fscore_f1_b, na.rm = T)
+mean(dat_s$fscore_f2_b, na.rm = T)
+mean(dat_s$fscore_f3_b, na.rm = T)
+mean(dat_s$fscore_f1_e, na.rm = T)
+mean(dat_s$fscore_f2_e, na.rm = T)
+mean(dat_s$fscore_f3_e, na.rm = T)
+
+```
+
+
+```{r}
+df <- dat_s |> 
+  group_by(treated_int, class_id) |>
+  mutate(class_id = as.numeric(class_id)) |> 
+  summarise(m_b = mean(all_gpa_b, na.rm = T),
+            se_b = sd(all_gpa_b, na.rm = T)/sqrt(length(all_gpa_b)),
+            m_e = mean(all_gpa_e, na.rm = T),
+            se_e = sd(all_gpa_e, na.rm = T)/sqrt(length(all_gpa_e))
+            )
+
+df <- df |> 
+  pivot_longer(cols = m_b:se_e,
+               names_to = c("stat", "time"),
+               names_pattern = "(.*)_(.*)",
+               values_to = "value")
+
+df <- df |> 
+  pivot_wider(names_from = "stat", values_from = "value")
+
+df <- df |> 
+  mutate(treated_int = ifelse(treated_int == 1,
+                              "Treatment",
+                              "Control")
+         # sch_id = case_when(
+         #   sch_id == 1 ~ "Baglung",
+         #   sch_id == 2 ~ "Kathmandu",
+         #   sch_id == 3 ~ "Pokhara")
+         )  |> 
+  mutate(class_id = case_when(
+           class_id %in% c(1:5) ~ paste0("School C Grade ", class_id + 5),
+           class_id %in% c(8:12) ~ paste0("School A Grade ", class_id - 2),
+           class_id %in% c(15:19) ~ paste0("School B Grade ", class_id - 9)
+         )) |> 
+  mutate(class_id = factor(class_id,
+                           levels = c(
+                             paste0("School A Grade ", 6:10),
+                             paste0("School B Grade ", 6:10),
+                             paste0("School C Grade ", 6:10)
+                           ))) |> 
+  rename(Condition = treated_int)
+
+df <- df |> 
+  mutate(time = ifelse(time == "b", "Baseline", "Endline"))
+
+p <- ggplot(data = df,
+       aes(x = time, y = m, group = Condition,
+           color = Condition)) +
+  geom_line(position=position_dodge(0.2))+
+  geom_point(size = 2, position=position_dodge(0.2)) +
+  geom_errorbar(aes(ymin=m-se, ymax=m+se), width=.2,
+                 position=position_dodge(0.2)) +
+  labs(x = "", y = "GPA\n",
+       title = "Average GPA at Baseline and Endline\nby Treatment Conditions and Classes\n",
+       caption = "(Each error bar shows the standard error of the group mean.)") +
+  facet_wrap(~class_id, nrow = 3) +
+  theme_minimal() +
+  theme(plot.caption.position = "plot",
+        plot.caption = element_text(hjust = 0.5),
+        plot.title = element_text(hjust = 0.5, face = "bold")) +
+   scale_color_manual(values=c('firebrick1','steelblue1')) + 
+  ylim(c(1,3.5));p
+
+ggsave(here::here("backup/plots/gpa_by_class.pdf"),
+       p, width = 10, height = 8)
+
+```
+
+```{r}
+# correlation matrix
+cor_df <- corstarsl(dat_s |> ungroup() |> select(fscore_f1_b:fscore_f3_b, all_gpa_b,
+                                                 fscore_f1_e:fscore_f3_e, all_gpa_e))
+
+rownames(cor_df) <- c("1. Self-integrity and Belonging in School (Baseline)",
+                      "2. Stereotype Threat (Baseline)",
+                      "3. Academic Stress (Baseline)",
+                      "4. Grade Point Average (Baseline)",
+                      "5. Self-integrity and Belonging in School (Endline)",
+                      "6. Stereotype Threat (Endline)",
+                      "7. Academic Stress (Endline)",
+                      "8. Grade Point Average (Endline)")
+
+colnames(cor_df) <- as.character(c(1:8))
+
+write.csv(cor_df, "analysis/tables/tab_cor.csv")
+```
+
+# Differential Attrition
+
+```{r}
+temp <- dat_s |> mutate(has_gpa_e = !is.na(all_gpa_e))
+
+mod_attr <- stan_glm(has_gpa_e ~ treated_int * (age_b + gender), data = temp, family = "binomial", seed = 1234)
+
+summary(mod_attr, digits = 3)
+```
+
+# Analysis
+
+## Prior predictive checks
+
+```{r check priors}
+# priors to be tested
+my_prior <- prior("normal(0, 1)", class = "b")
+
+# check default priors for other parameters
+validate_prior(
+    my_prior,
+    fscore_f1_e ~ fscore_f1_b + treated_int +
+    class_size + grade + gender + age_b + student_type + father_edu_f + mother_edu_f +
+    father_occ_salary + mother_occ_salary + adult_members + siblings + duration_int +
+    (treated_int | class_id),
+  dat_s)
+```
+
+## Primary outcomes
+
+```{r}
+fit_gpa <- brm(
+    all_gpa_e ~ all_gpa_b + treated_int + grade + gender + age_b + student_type + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id +
+      (treated_int | class_id),
+    dat_s,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+```
+
+```{r}
+# posterior predictive checks suggest pretty good fit
+p1 <- pp_check(fit_gpa, ndraws = 200) +
+  labs(title = "Posterior predictive checking for the model\npredicting GPA", 
+       x = "GPA", 
+       y = "Density") + 
+  xlim(-5,5) +
+  theme_classic();p1
+
+# loo suggests good predictive performance (not necessary though if I wish to focusing on interpreting the model parameters)
+loo_gpa <- loo(fit_gpa, reloo = T)
+```
+
+```{r}
+hypothesis(fit_gpa, "treated_int > 0")
+
+# posterior predictive plots
+draws <- as_draws_df(fit_gpa)
+
+pdf(here::here("backup/plots/te_gpa.pdf"), height = 8, width = 10)
+
+plot.kdensity(draws$b_treated_int, value = 0,
+              xlab = "Estimated Difference (Treatment - Control)",
+              main = "Posterior Distribution of the Treatment Effect of\n Values Affirmation on Nepalese Deaf Students' GPA",
+              col1 = "steelblue1",
+              col2 = "firebrick1")
+
+# Add ROPE: a shaded rectangle between the lines
+rect(-sd(dat_s$all_gpa_e, na.rm = T) * 0.02,
+     0, 
+     sd(dat_s$all_gpa_e, na.rm = T) * 0.02,
+     20, col = rgb(1, 0.5, 0, alpha = 0.5), border = NA)
+
+dev.off()
+
+# 95% high-density interval for reporting
+hdi(fit_gpa, ci = 0.89)
+
+# posterior draws of Cohen's d effect size
+summary(get.posterior.treat.d(fit_gpa))
+
+# Sequential Effect eXistence and sIgnificance Testing (SEXIT) framework
+# using the empirical benchmark in Kraft (2020)
+sexit(fit_gpa, significant = 0.02 * sd(dat_s$all_gpa_e, na.rm = T), large = 0.05 * sd(dat_s$all_gpa_e, na.rm = T), ci = 0.89)[3,]
+
+# consider es = 0.02 as negligible
+rope(fit_gpa, ci = 0.89, 
+     range = c(-sd(dat_s$all_gpa_e, na.rm = T) * 0.02, 
+               sd(dat_s$all_gpa_e, na.rm = T) * 0.02))
+
+
+# bf_gpa <- bayesfactor_parameters(
+#   fit_gpa, 
+#   null = c(-sd(dat_s$all_gpa_e, na.rm = T) * 0.01, 
+#                sd(dat_s$all_gpa_e, na.rm = T) * 0.01),
+#   direction = ">")
+# 
+# plot(bf_gpa, par = "b_treated_int")
+
+# treatment heterogeneity of the main model across classrooms
+summary(fit_gpa)$random
+
+posterior_samples <- as_draws(fit_gpa, pars = "^class_id")
+hdi(posterior_samples, ci = 0.89)
+
+```
+
+## Secondary outcomes
+
+```{r}
+fit_f1 <- brm(
+    fscore_f1_e ~ fscore_f1_b + treated_int + grade + gender + age_b + student_type + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id + all_gpa_b + 
+      (treated_int | class_id),
+    dat_s,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+  
+fit_f2 <- brm(
+    fscore_f2_e ~ fscore_f2_b + treated_int + grade + gender + age_b + student_type + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id + all_gpa_b +
+      (treated_int | class_id),
+    dat_s,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+  
+fit_f3 <- brm(
+    fscore_f3_e ~ fscore_f3_b + treated_int + grade + gender + age_b + student_type + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id + all_gpa_b +
+      (treated_int | class_id),
+    dat_s,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15))
+```
+
+```{r}
+summary(fit_f1$rhats)# pretty good rhats
+summary(fit_f2$rhats) # pretty good rhats
+summary(fit_f3$rhats) # pretty good rhats
+
+# posterior predictive checks suggest pretty good fit
+p1 <- pp_check(fit_f1, ndraws = 200) +
+  labs(title = "Posterior predictive checking for the model\npredicting self-esteem", 
+       x = "Self-esteem", 
+       y = "Density") + 
+  xlim(-5,5) +
+  theme_classic();p1
+
+p2 <- pp_check(fit_f2, ndraws = 200) +
+  labs(title = "Posterior predictive checking for the model\npredicting stereotype threat", 
+       x = "Stereotype Threat", 
+       y = "Density") + 
+  xlim(-5,5) +
+  theme_classic();p2
+
+p3 <- pp_check(fit_f3, ndraws = 200) +
+  labs(title = "Posterior predictive checking for the model\npredicting academic stress", 
+       x = "Academic Stress", 
+       y = "Density") + 
+  xlim(-5,5) +
+  theme_classic();p3
+
+# loo suggests good predictive performance (not necessary though if I wish to focusing on interpreting the model parameters)
+loo_f1 <- loo(fit_f1, reloo = T)
+loo_f2 <- loo(fit_f2, reloo = T)
+loo_f3 <- loo(fit_f3, reloo = T)
+```
+
+```{r}
+# "marginal" finding on treatment reducing perceived stereotype threat
+hypothesis(fit_f1, "treated_int > 0")
+hypothesis(fit_f2, "treated_int < 0") #
+hypothesis(fit_f3, "treated_int < 0")
+
+pdf(here::here("backup/plots/te_psych.pdf"), height = 6, width = 16)
+
+par(mfrow = c(1, 3))
+
+draws <- as_draws_df(fit_f2)
+
+plot.kdensity(draws$b_treated_int, value = 0,
+              xlab = "Estimated Difference (Treatment - Control)",
+              main = "Posterior Distribution of the Treatment Effect\non Reducing Stereotype Threat")
+
+# abline(v = c(-0.37, 0.06), col = "orange", lwd = 3)
+# Add ROPE: a shaded rectangle between the lines
+rect(-0.02, 0, 0.02, 4, col = rgb(1, 0.5, 0, alpha = 0.5), border = NA)
+
+# posterior predictive plots
+draws <- as_draws_df(fit_f1)
+
+plot.kdensity(draws$b_treated_int, value = 0,
+              xlab = "Estimated Difference (Treatment - Control)",
+              main = "Posterior Distribution of the Treatment Effect on\nPromoting Self-integrity and Sense of Belonging in School",
+              col1 = "steelblue1",
+              col2 = "firebrick1")
+
+# Add ROPE: a shaded rectangle between the lines
+rect(-0.02, 0, 0.02, 4, col = rgb(1, 0.5, 0, alpha = 0.5), border = NA)
+
+draws <- as_draws_df(fit_f3)
+
+plot.kdensity(draws$b_treated_int, value = 0,
+              xlab = "Estimated Difference (Treatment - Control)",
+              main = "Posterior Distribution of the Treatment Effect\non Reducing Academic Stress")
+
+# Add ROPE: a shaded rectangle between the lines
+rect(-0.02, 0, 0.02, 4, col = rgb(1, 0.5, 0, alpha = 0.5), border = NA)
+
+dev.off()
+
+# 95% high-density interval for reporting
+hdi(fit_f1, ci = 0.89)
+hdi(fit_f2, ci = 0.89)
+hdi(fit_f3, ci = 0.89)
+
+# posterior draws of Cohen's d effect size
+hist(get.posterior.treat.d(fit_f1))
+hist(get.posterior.treat.d(fit_f2))
+hist(get.posterior.treat.d(fit_f3))
+
+# sexit reporting based on empirical benchmarks in Bakker et al., 2019 and Kraft, 2020: small = 0.05, medium = 0.15, large = 0.2
+
+# Sequential Effect eXistence and sIgnificance Testing (SEXIT) framework
+sexit(fit_f1, significant = 0.02 * sd(dat_s$fscore_f1_e, na.rm = T), ci = 0.89)[3,]
+sexit(fit_f2, significant = 0.02 * sd(dat_s$fscore_f2_e, na.rm = T), ci = 0.89)[3,]
+sexit(fit_f3, significant = 0.02 * sd(dat_s$fscore_f3_e, na.rm = T), ci = 0.89)[3,]
+
+rope(fit_f1, range = c(-0.02 * sd(dat_s$fscore_f2_e, na.rm = T), 0.02 * sd(dat_s$fscore_f2_e, na.rm = T)), ci = 0.89)
+rope(fit_f2, range = c(-0.02 * sd(dat_s$fscore_f2_e, na.rm = T), 0.02 * sd(dat_s$fscore_f2_e, na.rm = T)), ci = 0.89)
+rope(fit_f3, range = c(-0.02 * sd(dat_s$fscore_f2_e, na.rm = T), 0.02 * sd(dat_s$fscore_f2_e, na.rm = T)), ci = 0.89)
+```
+
+## Moderation effect (prior performance)
+
+```{r}
+# create low-performing variable
+dat_s <- dat_s |> 
+  group_by(class_id) |> 
+  mutate(low_performing = as.numeric(all_gpa_b <= median(all_gpa_b)))
+```
+
+```{r}
+# using baseline performance (dichotomous) as the moderator
+fit_gpa_x_low_performance <- brm(
+    all_gpa_e ~ all_gpa_b + treated_int * low_performing + grade + gender + age_b + student_type +
+      father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id +
+      (treated_int | class_id),
+    data = dat_s,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+hypothesis(fit_gpa_x_low_performance, "treated_int > 0")
+
+hypothesis(fit_gpa_x_low_performance, "treated_int:low_performing < 0")
+
+hdi(fit_gpa_x_low_performance, ci = 0.89)
+sexit(fit_gpa_x_low_performance)
+
+# no interaction effect for low-performance because performance was already low for most students
+```
+
+```{r}
+# using baseline performance (continuous) as the moderator
+fit_gpa_x_low_performance_cont <- brm(
+    all_gpa_e ~ all_gpa_b + treated_int * all_gpa_b + grade + gender + age_b + student_type +
+      father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id +
+      (treated_int | class_id),
+    data = dat_s,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+hypothesis(fit_gpa_x_low_performance_cont, "treated_int > 0")
+
+hypothesis(fit_gpa_x_low_performance_cont, "all_gpa_b:treated_int < 0")
+
+hdi(fit_gpa_x_low_performance_cont, ci = 0.89)
+sexit(fit_gpa_x_low_performance_cont)
+```
+
+
+## Moderation effect (psychological threat)
+
+```{r}
+
+hist(dat_s$fscore_f2_b)
+
+fit_gpa_x_stereotype_threat <- brm(
+    all_gpa_e ~ all_gpa_b + treated_int * fscore_f2_b + grade + gender + age_b + student_type + 
+      father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id +
+      (treated_int | class_id),
+    data = dat_s,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15))
+
+
+hypothesis(fit_gpa_x_stereotype_threat, "treated_int > 0")
+hypothesis(fit_gpa_x_stereotype_threat, "treated_int:fscore_f2_b < 0")
+
+
+hdi(fit_gpa_x_stereotype_threat, ci = 0.89)
+
+# consider es = 0.01 as negligible
+rope(fit_gpa_x_stereotype_threat, ci = 0.89, 
+     range = c(-sd(dat_s$all_gpa_e, na.rm = T) * 0.01, 
+               sd(dat_s$all_gpa_e, na.rm = T) * 0.01))
+
+# using the empirical benchmark in Kraft (2020)
+sexit(fit_gpa_x_stereotype_threat, significant = 0.05 * sd(dat_s$all_gpa_e, na.rm = T), large = 0.2 * sd(dat_s$all_gpa_e, na.rm = T), ci = 0.89)[3,]
+
+
+p2 <- interact_plot(model = fit_gpa_x_stereotype_threat, 
+              pred = "treated_int", 
+              modx = "fscore_f2_b",
+              legend.main = "Stereotype Threat",
+              pred.labels = c("Control", "Treatment"),
+              x.label = "\nTreatment Condition",
+              y.label = "GPA\n") + theme_minimal(); p2
+
+
+temp <- p2$data |> filter(treated_int %in% c(0, 1)) |> select(treated_int, modx_group, fscore_f2_b, all_gpa_e)
+
+temp$treated_int <- factor(temp$treated_int, levels = c(0, 1), labels = c("Control", "Treatment"))
+
+# Creating the ggplot
+p2 <- ggplot(temp, aes(x = treated_int, y = all_gpa_e, fill = modx_group, group = modx_group)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.1, color = "black") +
+  geom_line(aes(group = modx_group, color = modx_group, linetype = modx_group), position = position_dodge(0.1), linewidth = 1) +
+  scale_fill_manual(values = c("#005B96", "#6497B1", "#B3CDE3"), name = "Stereotype Threat") +
+  scale_color_manual(values = c("#005B96","#6497B1", "#B3CDE3"), name = "Stereotype Threat") +
+  scale_linetype_manual(values = c("solid", "dashed", "dotted"), name = "Stereotype Threat") +
+  labs(x = "Treatment Condition", y = "GPA", fill = "Psychological Threat", color = "Stereotype Threat") +
+  theme_minimal() +
+  coord_cartesian(ylim = c(2.5, 2.6)) +
+  scale_x_discrete(expand = c(0.1, 0.1)) +
+  guides(fill = guide_legend(override.aes = list(color = "black")));p2
+
+
+p <- gridExtra::grid.arrange(p1, p2, nrow = 1)
+
+ggsave(here::here("backup/plots/simple_effects.pdf"),
+       p2, width = 6, height = 6
+       )
+```
+
+```{r}
+# simple slope effect
+dat_s <- dat_s |> 
+  mutate(fscore_f2_b_p1sd = fscore_f2_b + sd(fscore_f2_b, na.rm = T),
+         fscore_f2_b_m1sd = fscore_f2_b - sd(fscore_f2_b, na.rm = T))
+
+# treatment effect for high threat
+fit_gpa_x_stereotype_threat_high <- brm(
+    all_gpa_e ~ all_gpa_b + treated_int * fscore_f2_b_m1sd + grade + gender + age_b + student_type +
+      father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id +
+      (treated_int | class_id),
+    data = dat_s,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15))
+
+hypothesis(fit_gpa_x_stereotype_threat_high, "treated_int > 0")
+hdi(fit_gpa_x_stereotype_threat_high, ci = 0.89)
+
+# treatment effect for low threat
+fit_gpa_x_stereotype_threat_low <- brm(
+    all_gpa_e ~ all_gpa_b + treated_int * fscore_f2_b_p1sd + grade + gender + age_b + student_type +
+      father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id +
+      (treated_int | class_id),
+    data = dat_s,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15))
+
+hypothesis(fit_gpa_x_stereotype_threat_low, "treated_int > 0")
+hdi(fit_gpa_x_stereotype_threat_low, ci = 0.89)
+```
+
+## Predicted Values
+```{r}
+dat_pred <- dat_s |> select(
+      st_id, sch_id, all_gpa_e, all_gpa_b, treated_int, grade, gender, age_b, student_type,
+      father_edu_f, mother_edu_f, 
+      father_occ_salary, mother_occ_salary, adult_members, siblings) |> 
+  na.omit() |> 
+  mutate(grade = droplevels(grade))
+  
+dat_pred$gpa_pred <- predict(fit_gpa, newdata = dat_pred, allow_new_levels = T)[,1]
+```
+
+```{r}
+df <- dat_pred |> 
+  group_by(treated_int, class_id) |>
+  mutate(class_id = as.numeric(class_id)) |> 
+  summarise(m_b = mean(all_gpa_b, na.rm = T),
+            se_b = sd(all_gpa_b, na.rm = T)/sqrt(length(all_gpa_b)),
+            m_e = mean(gpa_pred, na.rm = T),
+            se_e = sd(gpa_pred, na.rm = T)/sqrt(length(gpa_pred))
+            )
+
+df <- df |> 
+  pivot_longer(cols = m_b:se_e,
+               names_to = c("stat", "time"),
+               names_pattern = "(.*)_(.*)",
+               values_to = "value")
+
+df <- df |> 
+  pivot_wider(names_from = "stat", values_from = "value")
+
+df <- df |> 
+  mutate(treated_int = ifelse(treated_int == 1,
+                              "Treatment",
+                              "Control")
+         # sch_id = case_when(
+         #   sch_id == 1 ~ "Baglung",
+         #   sch_id == 2 ~ "Kathmandu",
+         #   sch_id == 3 ~ "Pokhara")
+         )  |> 
+  mutate(class_id = case_when(
+           class_id %in% c(1:5) ~ paste0("School A Grade ", class_id + 5),
+           class_id %in% c(8:12) ~ paste0("School B Grade ", class_id - 2),
+           class_id %in% c(15:19) ~ paste0("School C Grade ", class_id - 9)
+         )) |> 
+  mutate(class_id = factor(class_id,
+                           levels = c(
+                             paste0("School A Grade ", 6:10),
+                             paste0("School B Grade ", 6:10),
+                             paste0("School C Grade ", 6:10)
+                           ))) |> 
+  rename(Condition = treated_int)
+
+df <- df |> 
+  mutate(time = ifelse(time == "b", "Baseline", "Endline"))
+
+ggplot(data = df,
+       aes(x = time, y = m, group = Condition,
+           color = Condition)) +
+  geom_line(position=position_dodge(0.2))+
+  geom_point(size = 2, position=position_dodge(0.2)) +
+  geom_errorbar(aes(ymin=m-se, ymax=m+se), width=.2,
+                 position=position_dodge(0.2)) +
+  labs(x = "", y = "GPA\n",
+       title = "Average Raw GPA at Baseline and Model-Estimated GPA at Endline\nby Treatment Conditions and Classes\n",
+       caption = "(Each error bar shows the standard error of the group mean.)") +
+  facet_wrap(~class_id, nrow = 3) +
+  theme_minimal() +
+  theme(plot.caption.position = "plot",
+        plot.caption = element_text(hjust = 0.5),
+        plot.title = element_text(hjust = 0.5, face = "bold")) +
+   scale_color_manual(values=c('firebrick1','steelblue1')) + 
+  ylim(c(1,3.5))
+
+```
+
+## Subgroup Analysis (effect of thematic codes in the treatment group)
+
+```{r}
+fit_gpa_treated_qual <- brm(
+    all_gpa_e ~ all_gpa_b + 
+      theme_t_interest_and_learn_new_things +
+      theme_t_religion_heritage +
+      theme_t_career_aspirations + 
+      theme_t_non_career_aspirations +
+      theme_t_self_identity +
+      theme_t_relationship_with_family +
+      theme_t_relationship_with_friends +
+      theme_t_prosocial_behavior +
+      total_count_int + grade + gender + age_b + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id +
+      (1 | class_id),
+    dat_treated,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+hypothesis(fit_gpa_treated_qual, "theme_t_interest_and_learn_new_things < 0")
+hypothesis(fit_gpa_treated_qual, "theme_t_religion_heritage > 0")
+hypothesis(fit_gpa_treated_qual, "theme_t_career_aspirations < 0") #
+hypothesis(fit_gpa_treated_qual, "theme_t_non_career_aspirations > 0")
+hypothesis(fit_gpa_treated_qual, "theme_t_self_identity > 0") ##
+hypothesis(fit_gpa_treated_qual, "theme_t_relationship_with_family > 0")
+hypothesis(fit_gpa_treated_qual, "theme_t_relationship_with_friends > 0") ##
+hypothesis(fit_gpa_treated_qual, "theme_t_prosocial_behavior > 0")
+hypothesis(fit_gpa_treated_qual, "total_count_int > 0") ##
+
+corstarsl(dat_s |> select(ind_count_int, theme_t_interest_and_learn_new_things:theme_t_prosocial_behavior))
+```
+
+```{r}
+# posterior predictive plots
+draws <- as_draws_df(fit_gpa_treated_qual)
+
+# Convert the relevant b_theme variables to long format
+draws_long <- draws %>%
+  as.data.frame() %>%
+  select(starts_with("b_theme")) %>%
+  gather(key = "variable", value = "value") %>%
+  mutate(variable = str_replace_all(variable, "^b_theme_t_", ""),
+         variable = str_replace_all(variable, "_", " "),
+         variable = str_to_title(variable)) |> 
+  mutate(variable = case_when(
+    variable == "Career Aspirations" ~ "Career-related Aspirations",
+    variable == "Interest And Learn New Things" ~ "Personal Interests",
+    variable == "Non Career Aspirations" ~ "Non-career-related Aspirations",
+    variable == "Prosocial Behavior" ~ "Broader Prosocial Behavior",
+    variable == "Relationship With Family" ~ "Relationship with Family",
+    variable == "Relationship With Friends" ~ "Relationship with Friends",
+    variable == "Religion Heritage" ~ "Religious and Cultural Values",
+    variable == "Self Identity" ~ "Self-awareness and Growth in Self-identity"
+  ))
+
+# Define ROPE
+rope_low <- -sd(dat_s$all_gpa_e, na.rm = TRUE) * 0.02
+rope_high <- sd(dat_s$all_gpa_e, na.rm = TRUE) * 0.02
+
+# Compute the density for each group
+densities <- lapply(split(draws_long$value, draws_long$variable), density)
+
+# Combine the densities into a single data frame
+density_data <- do.call(rbind, mapply(function(dens, name) {
+  data.frame(x = dens$x, y = dens$y, variable = name)
+}, densities, names(densities), SIMPLIFY = FALSE))
+
+density_data <- density_data |> 
+  mutate(variable = factor(variable, 
+                           levels = c("Personal Interests",
+                                      "Career-related Aspirations",
+                                      "Non-career-related Aspirations",
+                                      "Religious and Cultural Values",
+                                      "Self-awareness and Growth in Self-identity",
+                                      "Relationship with Family",
+                                      "Relationship with Friends",
+                                      "Broader Prosocial Behavior"
+                                      )))
+
+# Plot using geom_ribbon
+p <- ggplot(density_data, aes(x = x, ymin = 0, ymax = y)) +
+  geom_ribbon(aes(fill = ifelse(x < 0, "firebrick1", "steelblue1")), 
+              alpha = 0.9, 
+              show.legend = FALSE) +
+  scale_fill_identity() + 
+  geom_rect(aes(xmin = rope_low, xmax = rope_high, ymin = 0, ymax = Inf),
+            fill = "orange",
+            alpha = 0.05,
+            color = NA) +
+  facet_grid(variable ~ ., scales = "fixed", space = "free") +
+  labs(
+    x = "Posterior Estimates of Regression Coefficients",
+    y = "Density",
+    title = ""
+  ) +
+  theme_minimal() +
+  theme(
+    strip.background = element_blank(),
+    strip.text.y = element_text(angle = 0, face = "bold")
+  );p
+
+ggsave(here::here("backup/plots/pred_qual_treated.pdf"),
+       p, width = 10, height = 10)
+
+```
+
+```{r}
+# 95% high-density interval for reporting
+hdi(fit_gpa_treated_qual, ci = 0.89)
+
+# Sequential Effect eXistence and sIgnificance Testing (SEXIT) framework
+# using the empirical benchmark in Kraft (2020)
+sexit(fit_gpa_treated_qual, significant = 0.02 * sd(dat_s$all_gpa_e, na.rm = T), large = 0.05 * sd(dat_s$all_gpa_e, na.rm = T), ci = 0.89)[3,]
+
+# consider es = 0.01 as negligible
+rope(fit_gpa_treated_qual, ci = 0.89, 
+     range = c(-sd(dat_s$all_gpa_e, na.rm = T) * 0.02, 
+               sd(dat_s$all_gpa_e, na.rm = T) * 0.02))
+
+```
+
+## Subgroup Analysis (effect of thematic codes in the control group)
+
+```{r}
+fit_gpa_control_qual <- brm(
+    all_gpa_e ~ all_gpa_b + 
+      theme_c_no_knowledge +
+      theme_c_no_interest +
+      theme_c_communication_barriers +
+      theme_c_no_support + 
+      theme_o_aspirations +
+      theme_o_interest_ability +
+      theme_o_reward +
+      theme_o_support +
+      total_count_int + grade + gender + age_b + father_edu_f + mother_edu_f +
+      father_occ_salary + mother_occ_salary + adult_members + siblings + sch_id +
+      (1 | class_id),
+    dat_control,
+    prior = my_prior, 
+    chains = 4,
+    seed = 1234,
+    control = list(adapt_delta = 0.99,
+                   max_treedepth = 15)
+  )
+
+hypothesis(fit_gpa_control_qual, "theme_c_no_knowledge < 0")
+hypothesis(fit_gpa_control_qual, "theme_c_no_interest < 0")
+hypothesis(fit_gpa_control_qual, "theme_c_communication_barriers < 0")
+hypothesis(fit_gpa_control_qual, "theme_c_no_support < 0")
+
+hypothesis(fit_gpa_control_qual, "theme_o_aspirations > 0") #
+hypothesis(fit_gpa_control_qual, "theme_o_interest_ability < 0") #
+hypothesis(fit_gpa_control_qual, "theme_o_reward > 0")
+hypothesis(fit_gpa_control_qual, "theme_o_support > 0") #
+```
+
+```{r}
+# posterior predictive plots
+draws <- as_draws_df(fit_gpa_control_qual)
+
+# Convert the relevant b_theme variables to long format
+draws_long <- draws %>%
+  as.data.frame() %>%
+  select(starts_with("b_theme")) %>%
+  gather(key = "variable", value = "value") %>%
+  mutate(variable = str_replace_all(variable, "^b_theme_[co]_", ""),
+         variable = str_replace_all(variable, "_", " "),
+         variable = str_to_title(variable)) |> 
+  mutate(variable = case_when(
+    variable == "No Knowledge" ~ "Lack of Knowledge",
+    variable == "No Interest" ~ "Lack of Interest",
+    variable == "Communication Barriers" ~ "Barriers Related to Deafness and Communication",
+    variable == "No Support" ~ "Lack of Support from Friends and Family",
+    variable == "Aspirations" ~ "Aspirations Held by Others",
+    variable == "Interest Ability" ~ "Interests or Ability of Others",
+    variable == "Reward" ~ "Reward for Others",
+    variable == "Support" ~ "Availability of Support for Others from Friends and Family"
+  ))
+
+# Define ROPE
+rope_low <- -sd(dat_s$all_gpa_e, na.rm = TRUE) * 0.02
+rope_high <- sd(dat_s$all_gpa_e, na.rm = TRUE) * 0.02
+
+# Compute the density for each group
+densities <- lapply(split(draws_long$value, draws_long$variable), density)
+
+# Combine the densities into a single data frame
+density_data <- do.call(rbind, mapply(function(dens, name) {
+  data.frame(x = dens$x, y = dens$y, variable = name)
+}, densities, names(densities), SIMPLIFY = FALSE))
+
+density_data <- density_data |> 
+  mutate(variable = factor(variable, 
+                           levels = c("Lack of Knowledge",
+                                      "Lack of Interest",
+                                      "Barriers Related to Deafness and Communication",
+                                      "Lack of Support from Friends and Family",
+                                      "Interests or Ability of Others",
+                                      "Aspirations Held by Others",
+                                      "Reward for Others",
+                                      "Availability of Support for Others from Friends and Family"
+                                      )))
+
+# Plot using geom_ribbon
+p <- ggplot(density_data, aes(x = x, ymin = 0, ymax = y)) +
+  geom_ribbon(aes(fill = ifelse(x < 0, "firebrick1", "steelblue1")), 
+              alpha = 0.9, 
+              show.legend = FALSE) +
+  scale_fill_identity() + 
+  geom_rect(aes(xmin = rope_low, xmax = rope_high, ymin = 0, ymax = Inf),
+            fill = "orange",
+            alpha = 0.05,
+            color = NA) +
+  facet_grid(variable ~ ., scales = "fixed", space = "free") +
+  labs(
+    x = "Posterior Estimates of Regression Coefficients",
+    y = "Density",
+    title = ""
+  ) +
+  theme_minimal() +
+  theme(
+    strip.background = element_blank(),
+    strip.text.y = element_text(angle = 0, face = "bold")
+  ); p
+
+ggsave(here::here("backup/plots/pred_qual_control.pdf"),
+       p, width = 10, height = 10)
+
+```
+
+```{r}
+# 95% high-density interval for reporting
+hdi(fit_gpa_control_qual, ci = 0.89)
+
+# Sequential Effect eXistence and sIgnificance Testing (SEXIT) framework
+# using the empirical benchmark in Kraft (2020)
+sexit(fit_gpa_control_qual, significant = 0.02 * sd(dat_s$all_gpa_e, na.rm = T), large = 0.05 * sd(dat_s$all_gpa_e, na.rm = T), ci = 0.89)[3,]
+
+# consider es = 0.01 as negligible
+rope(fit_gpa_control_qual, ci = 0.89, 
+     range = c(-sd(dat_s$all_gpa_e, na.rm = T) * 0.02, 
+               sd(dat_s$all_gpa_e, na.rm = T) * 0.02))
+
+```
