@@ -12,4 +12,4 @@ Notes:
 
 3. Factor scores are created in `R/create_fscore.R`, based on k-fold cross-validation results in `kfa/` and the procedures described in the manuscript and the supplemental materials.
 
-4. We are currently working on a second paper that uses thematic codes from the values affirmation reflections. We will only share the de-identified text data after we finish working on that paper.
+4. Please see the [published paper and the appendix](https://link.springer.com/article/10.1007/s11218-025-10097-7#article-info) for detailed information on the qualitative analysis (i.e. Study 2).
